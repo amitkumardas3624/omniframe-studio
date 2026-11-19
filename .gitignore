@@ -1,0 +1,30 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.eggs/
+build/
+dist/
+.venv/
+venv/
+
+# Tooling
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+
+# OmniFrame runtime artefacts
+.omniframe/
+out/
+renders/
+*.omniframe.json
+
+# Node (optional web UI workspace)
+node_modules/
+web-ui/dist/
+
+# OS
+.DS_Store
+Thumbs.db
