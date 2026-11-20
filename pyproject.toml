@@ -31,6 +31,8 @@ dependencies = [
 
 [project.optional-dependencies]
 render = ["playwright>=1.44"]
+ui = ["fastapi>=0.110", "uvicorn>=0.29"]
+native = ["pybind11>=2.11"]
 dev = [
   "pytest>=8.0",
   "pytest-cov>=5.0",
@@ -45,6 +47,7 @@ Issues = "https://github.com/omniframe-studio/omniframe-studio/issues"
 
 [project.scripts]
 omniframe = "omniframe.cli.main:run"
+mcp = "omniframe.mcp_server:main"
 
 [tool.setuptools]
 package-dir = { "" = "src" }
