@@ -15,10 +15,14 @@ venv/
 .coverage
 htmlcov/
 
+# Worktrees
+.worktrees/
+
 # OmniFrame runtime artefacts
 .omniframe/
 out/
 renders/
+*.mp4
 *.omniframe.json
 
 # Node (optional web UI workspace)
