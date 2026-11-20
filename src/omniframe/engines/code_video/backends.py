@@ -20,6 +20,7 @@ from __future__ import annotations
 
 import json
 import re
+from io import BytesIO
 from abc import ABC, abstractmethod
 from pathlib import Path
 from typing import Any, Callable
@@ -32,6 +33,7 @@ LOG = get_logger("engines.code_video.backends")
 
 #: ``(severity, message, line, column, source, frame)``
 IssueSink = Callable[[str, str, int | None, int | None, str | None, int | None], None]
+FrameSink = Callable[[bytes], None]
 
 #: Matches the ``<file>:<line>:<column>`` part of a V8 stack frame.
 _LOCATION_RE = re.compile(r":(\d+):(\d+)")
@@ -108,6 +110,7 @@ class Backend(ABC):
         *,
         resume: bool,
         on_issue: IssueSink,
+        on_frame: FrameSink | None = None,
     ) -> tuple[list[Path], bool]:
         """Render the scene.
 
@@ -167,6 +170,7 @@ class PlaywrightBackend(Backend):
         *,
         resume: bool,
         on_issue: IssueSink,
+        on_frame: FrameSink | None = None,
     ) -> tuple[list[Path], bool]:
         try:
             from playwright.sync_api import sync_playwright
@@ -238,12 +242,22 @@ class PlaywrightBackend(Backend):
                         fatal = True
                         break
 
-                    page.screenshot(
-                        path=str(target),
-                        omit_background=bool(scene.transparent),
-                        animations="disabled",
-                    )
-                    frames.append(target)
+                    if on_frame is not None:
+                        encoded = page.screenshot(
+                            omit_background=bool(scene.transparent),
+                            animations="disabled",
+                        )
+                        from PIL import Image
+
+                        with Image.open(BytesIO(encoded)) as image:
+                            on_frame(image.convert("RGBA").tobytes("raw", "RGBA"))
+                    else:
+                        page.screenshot(
+                            path=str(target),
+                            omit_background=bool(scene.transparent),
+                            animations="disabled",
+                        )
+                        frames.append(target)
             finally:
                 try:
                     browser.close()
@@ -461,6 +475,7 @@ class StubBackend(Backend):
         *,
         resume: bool,
         on_issue: IssueSink,
+        on_frame: FrameSink | None = None,
     ) -> tuple[list[Path], bool]:
         from PIL import Image, ImageDraw
 
@@ -485,8 +500,11 @@ class StubBackend(Backend):
             draw.text((24, 24), label, fill=(235, 235, 245, 255))
             if text:
                 draw.text((24, 60), text[:120], fill=(200, 210, 240, 255))
-            image.save(target)
-            frames.append(target)
+            if on_frame is not None:
+                on_frame(image.tobytes("raw", "RGBA"))
+            else:
+                image.save(target)
+                frames.append(target)
 
         on_issue(
             "warning",

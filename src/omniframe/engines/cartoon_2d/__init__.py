@@ -31,6 +31,7 @@ from .scene import (
     Layer,
     evaluate_layer,
     evaluate_scene,
+    lower_native_scene,
     resolve_source,
 )
 from .tween import Easing, interpolate, tween_value
@@ -53,6 +54,7 @@ __all__ = [
     "frame_filename",
     "get_bridge",
     "interpolate",
+    "lower_native_scene",
     "parse_color",
     "render_frame",
     "render_frames",

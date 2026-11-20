@@ -154,6 +154,29 @@ def detect_python() -> Capability:
     )
 
 
+def detect_native_accelerator() -> Capability:
+    """Detect the optional native accelerator without making it mandatory."""
+
+    try:
+        from .._native import native_status
+
+        status = native_status()
+    except Exception as exc:  # pragma: no cover - defensive import boundary
+        return Capability(
+            name="native_accelerator",
+            available=False,
+            detail=f"native capability probe failed: {exc}",
+            source="python-package",
+        )
+    return Capability(
+        name="native_accelerator",
+        available=bool(status.get("available")),
+        path=status.get("path"),
+        detail=status.get("reason") or "optional pybind11 accelerator available",
+        source="pybind11" if status.get("available") else "python-fallback",
+    )
+
+
 def detect_node() -> Capability:
     path = shutil.which("node")
     if not path:
@@ -282,6 +305,7 @@ def detect_krita() -> Capability:
 
 DETECTORS = {
     "python": detect_python,
+    "native_accelerator": detect_native_accelerator,
     "node": detect_node,
     "ffmpeg": detect_ffmpeg,
     "ffprobe": detect_ffprobe,

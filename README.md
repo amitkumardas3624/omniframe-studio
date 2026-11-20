@@ -11,6 +11,8 @@ Requirements: Python 3.10+ on Windows 10/11 or another supported platform. FFmpe
 python -m pip install -e .
 python -m pip install -e ".[render]"
 python -m playwright install chromium
+# Optional native C++17/pybind11 accelerator; Python fallback remains automatic
+python -m pip install -e ".[native]"
 
 # Inspect the environment and action contracts
 omniframe doctor
@@ -21,7 +23,22 @@ omniframe project validate examples/code-explainer/project.json
 omniframe project render examples/code-explainer/project.json --out out/code-explainer
 omniframe project compose examples/code-explainer/project.json --frames out/code-explainer/intro --out out/code-explainer.mp4
 omniframe inspect media --video out/code-explainer.mp4 --output-dir out/inspect --count 8 --contact-sheet out/inspect/contact-sheet.png
+
+# Opt-in direct raw RGBA streaming for a project containing one renderable clip.
+# Streaming does not create resumable PNG checkpoints.
+omniframe project render examples/code-explainer/project.json --out out/stream-cache \
+  --backend playwright --stream-to-ffmpeg out/code-explainer-stream.mp4
 ```
+
+### Optional acceleration and compatibility
+
+The default renderer remains PNG-first and supports resume/checkpoint workflows. The
+`--stream-to-ffmpeg` flag is opt-in, streams raw RGBA frames through FFmpeg stdin,
+and rejects `--resume` because no PNG checkpoint files are produced. Compatible
+H.264/HEVC/ProRes/VP9 segments are automatically concatenated or audio-muxed with
+`-c copy`; incompatible metadata falls back to the selected encoder with a logged
+reason. `omniframe doctor --json` reports `native_accelerator` as either `native` or
+`python-fallback`. Native failures never prevent installation or normal PNG rendering.
 
 Every capability is available as a typed action with JSON Schema validation:
 

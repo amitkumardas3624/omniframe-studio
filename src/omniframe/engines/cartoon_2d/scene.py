@@ -327,3 +327,53 @@ def resolve_source(scene: CartoonScene, layer: Layer) -> Path | None:
     if not source.is_absolute() and scene.base_dir:
         source = Path(scene.base_dir) / source
     return source
+
+
+def lower_native_scene(scene: CartoonScene, frame: int) -> dict[str, Any] | None:
+    """Lower a conservative primitive scene into the native rasterizer shape.
+
+    ``None`` means the scene uses a feature for which Python/Pillow remains the
+    reference implementation.  Keeping the gate explicit prevents a partial
+    native implementation from silently changing image output.
+    """
+
+    background = str(scene.background or "#00000000").lower()
+    if background not in {"#00000000", "#000000000", "transparent", "#00000000ff"}:
+        return None
+    if scene.camera_x or scene.camera_y or scene.camera_scale != 1.0 or scene.camera_keyframes:
+        return None
+
+    state = evaluate_scene(scene, frame)
+    lowered: list[dict[str, Any]] = []
+    for layer in scene.sorted_layers():
+        if not layer.visible or layer.kind.lower() not in {"solid", "vector"}:
+            if layer.visible:
+                return None
+            continue
+        props = state["layers"].get(layer.id, {})
+        if layer.keyframes:
+            # Animated primitive properties are only safe when evaluation did
+            # not introduce any unsupported custom property.
+            if any(key not in {"x", "y", "scale_x", "scale_y", "rotation", "opacity"} for key in props):
+                return None
+        if (
+            float(props.get("scale_x", layer.scale_x)) != 1.0
+            or float(props.get("scale_y", layer.scale_y)) != 1.0
+            or float(props.get("rotation", layer.rotation)) != 0.0
+            or float(props.get("anchor_x", layer.anchor_x)) != 0.5
+            or float(props.get("anchor_y", layer.anchor_y)) != 0.5
+        ):
+            return None
+        lowered.append(
+            {
+                "id": layer.id,
+                "kind": layer.kind.lower(),
+                "color": layer.color,
+                "x": float(props.get("x", layer.x)),
+                "y": float(props.get("y", layer.y)),
+                "opacity": float(props.get("opacity", layer.opacity)),
+                "anchor_x": 0.5,
+                "anchor_y": 0.5,
+            }
+        )
+    return {"width": scene.width, "height": scene.height, "layers": lowered, "frame": frame}

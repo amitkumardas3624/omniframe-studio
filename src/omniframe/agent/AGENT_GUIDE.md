@@ -11,7 +11,7 @@ result = call_action("environment.detect", {"include_hosts": True})
 # Returns: python version, node, ffmpeg, chromium, and host app detection
 
 # Step 2: List available tools
-result = call_action("tools --list")  
+result = call_action("tools --list")
 # Returns: JSON Schema for all 18 actions
 
 # Step 3: Route to best engine
@@ -202,16 +202,34 @@ See `agent/schemas/tools.json` for the full schema registry.
 
 ## Package Installation
 
-```bash
-# From repo root
-pip install -e .
+```powershell
+# From repo root; native is optional
+python -m pip install -e .
+python -m pip install -e ".[native]"
 
 # Verify
-omniframe doctor
+omniframe doctor --json
 
 # List tools
 omniframe tools --list
 ```
+
+## Streaming and copy-safe delivery
+
+Use the normal PNG path when checkpoints, resume, or visual inspection of every
+frame is required. For a single code or cartoon clip, opt into direct raw RGBA
+streaming:
+
+```powershell
+omniframe project render project.json --out out/stream-cache `
+  --stream-to-ffmpeg out/clip.mp4 --cartoon-backend auto
+```
+
+Streaming rejects `--resume` by design. The optional native accelerator is
+reported by `doctor` as `native_accelerator`; `auto` falls back to Python when
+native code is unavailable or a scene uses unsupported primitives. Compatible
+video segments are selected for FFmpeg `-c copy` during concat/audio mux, while
+incompatible streams are re-encoded with a structured reason in logs.
 
 ## Version
 

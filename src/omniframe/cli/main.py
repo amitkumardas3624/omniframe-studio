@@ -327,13 +327,31 @@ def project_render(
     output: str = typer.Option("renders", "--out", help="Directory for the rendered frames."),
     engine: str = typer.Option("auto", "--engine", help="auto | code_video | cartoon_2d"),
     backend: str = typer.Option("auto", "--backend", help="auto | playwright | stub"),
+    cartoon_backend: str = typer.Option("auto", "--cartoon-backend", help="auto | python | native"),
     resume: bool = typer.Option(False, "--resume", help="Skip frames that already exist."),
+    stream_to_ffmpeg: Optional[str] = typer.Option(
+        None,
+        "--stream-to-ffmpeg",
+        help="Stream a single renderable clip as raw RGBA to this video path; disables PNG/resume.",
+    ),
 ) -> None:
-    """Render every renderable clip of a project to PNG frames."""
+    """Render clips to PNG frames, or opt-in stream one clip directly to FFmpeg."""
+
+    if stream_to_ffmpeg and resume:
+        _fail("--stream-to-ffmpeg cannot be combined with --resume; streaming has no checkpoint files.")
 
     doc = _load_project(project)
     out_dir = Path(output).expanduser()
     out_dir.mkdir(parents=True, exist_ok=True)
+
+    renderable = [
+        clip
+        for track in doc.sorted_tracks()
+        for clip in track.sorted_clips()
+        if clip.kind.value in {"code_scene", "cartoon_layer"}
+    ]
+    if stream_to_ffmpeg and len(renderable) != 1:
+        _fail("--stream-to-ffmpeg requires exactly one code_scene or cartoon_layer clip.")
 
     results: list[dict[str, Any]] = []
     for track in doc.sorted_tracks():
@@ -360,7 +378,12 @@ def project_render(
                     settle_timeout_ms=clip.code.settle_timeout_ms,
                 )
                 renderer = CodeVideoRenderer(backend=backend)
-                result = renderer.render(scene, out_dir / clip.id, resume=resume)
+                result = renderer.render(
+                    scene,
+                    out_dir / clip.id,
+                    resume=resume,
+                    stream_to_ffmpeg=stream_to_ffmpeg,
+                )
                 results.append({"clip": clip.id, **result.to_dict()})
             elif kind == "cartoon_layer":
                 from ..engines.cartoon_2d import CartoonScene, render_frames
@@ -370,12 +393,21 @@ def project_render(
                 cartoon = CartoonScene.from_spec(clip.cartoon)
                 cartoon.fps = doc.meta.fps
                 cartoon.duration_frames = clip.duration_frames
-                paths = render_frames(cartoon, out_dir / clip.id, resume=resume)
+                paths = render_frames(
+                    cartoon,
+                    out_dir / clip.id,
+                    resume=resume,
+                    backend=cartoon_backend,
+                    stream_to_ffmpeg=stream_to_ffmpeg,
+                )
                 results.append(
                     {
                         "clip": clip.id,
                         "frames": [str(p) for p in paths],
                         "count": len(paths),
+                        "stream_output": stream_to_ffmpeg,
+                        "stream_mode": stream_to_ffmpeg is not None,
+                        "backend": cartoon_backend,
                         "ok": True,
                     }
                 )

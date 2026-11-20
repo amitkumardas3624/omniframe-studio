@@ -13,7 +13,9 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
 
+from ...core.errors import ValidationError
 from ...core.logging import get_logger
+from ..compositor.raw_stream import RawVideoStream
 from .backends import Backend, build_frame_payload, parse_stack_location, select_backend
 from .scene import CodeScene
 
@@ -63,6 +65,7 @@ class RenderResult:
     ok: bool = True
     backend: str = "unknown"
     duration_seconds: float = 0.0
+    stream_output: str | None = None
 
     @property
     def errors(self) -> list[RenderIssue]:
@@ -86,6 +89,8 @@ class RenderResult:
             "width": self.width,
             "height": self.height,
             "duration_seconds": round(self.duration_seconds, 3),
+            "stream_output": self.stream_output,
+            "stream_mode": self.stream_output is not None,
             "issues": [issue.to_dict() for issue in self.issues],
             "error_count": len(self.errors),
         }
@@ -141,8 +146,15 @@ class CodeVideoRenderer:
         output_dir: str | Path,
         *,
         resume: bool = False,
+        stream_to_ffmpeg: str | Path | None = None,
     ) -> RenderResult:
-        """Render ``scene`` into ``output_dir`` and report the outcome."""
+        """Render ``scene`` into PNGs or stream raw RGBA frames to FFmpeg."""
+
+        if stream_to_ffmpeg is not None and resume:
+            raise ValidationError(
+                "stream_to_ffmpeg cannot be combined with resume/checkpoint rendering",
+                stream_to_ffmpeg=str(stream_to_ffmpeg),
+            )
 
         target_dir = Path(output_dir)
         target_dir.mkdir(parents=True, exist_ok=True)
@@ -169,7 +181,28 @@ class CodeVideoRenderer:
             )
 
         started = time.monotonic()
-        frames, completed = self.backend.render(scene, target_dir, resume=resume, on_issue=sink)
+        if stream_to_ffmpeg is None:
+            frames, completed = self.backend.render(
+                scene,
+                target_dir,
+                resume=resume,
+                on_issue=sink,
+            )
+        else:
+            with RawVideoStream(
+                stream_to_ffmpeg,
+                width=scene.width,
+                height=scene.height,
+                fps=scene.fps,
+                extra_args=("-pix_fmt", "yuv420p"),
+            ) as stream:
+                frames, completed = self.backend.render(
+                    scene,
+                    target_dir,
+                    resume=False,
+                    on_issue=sink,
+                    on_frame=stream.write,
+                )
         elapsed = time.monotonic() - started
 
         ok = completed and not [i for i in issues if i.severity == "error"]
@@ -187,6 +220,7 @@ class CodeVideoRenderer:
             ok=ok,
             backend=self.backend.name,
             duration_seconds=elapsed,
+            stream_output=str(stream_to_ffmpeg) if stream_to_ffmpeg is not None else None,
         )
 
         if issues:

@@ -5,17 +5,20 @@ from __future__ import annotations
 import shutil
 import tempfile
 from pathlib import Path
-from typing import Any, Sequence
+from typing import Any, Iterable, Sequence
 
 from ...core.errors import ValidationError
 from ...core.logging import get_logger
 from .audio import AudioTrack, SubtitleTrack, mix_audio
 from .ffmpeg import (
     build_video_from_frames,
+    concat_copy_compatible,
     escape_filter_path,
     ffmpeg_available,
     ffprobe_info,
+    video_copy_compatible,
     run_ffmpeg,
+    stream_rgba_frames,
     write_concat_list,
 )
 from .presets import ExportPreset, get_preset
@@ -76,6 +79,32 @@ class Compositor:
             transparent=transparent or chosen.supports_transparency and transparent,
         )
 
+    def raw_frames_to_video(
+        self,
+        frames: Iterable[bytes],
+        output: str | Path,
+        *,
+        width: int,
+        height: int,
+        fps: float = 30.0,
+        preset: str = "h264",
+    ) -> Path:
+        """Stream raw RGBA frames directly to FFmpeg."""
+
+        chosen = get_preset(preset)
+        if chosen.name == "png_sequence":
+            raise ValidationError("png_sequence preset cannot consume a raw RGBA stream")
+        target = self._target(output)
+        return stream_rgba_frames(
+            frames,
+            target,
+            width=width,
+            height=height,
+            fps=fps,
+            video_codec=chosen.video_codec,
+            extra_args=chosen.extra_args,
+        )
+
     def _png_sequence(
         self, frames: Sequence[str | Path], target: Path, *, fps: float
     ) -> Path:
@@ -101,6 +130,7 @@ class Compositor:
         output: str | Path,
         *,
         preset: str = "h264",
+        reencode: bool | str = "auto",
     ) -> Path:
         """Concatenate videos in the given order."""
 
@@ -119,13 +149,22 @@ class Compositor:
                 lines.append(f"file '{escaped}'")
             list_file.write_text("\n".join(lines) + "\n", encoding="utf-8")
 
-            args = [
-                "-f", "concat", "-safe", "0", "-i", str(list_file),
-                "-c:v", chosen.video_codec,
-            ]
-            if chosen.audio_codec != "none":
-                args += ["-c:a", chosen.audio_codec]
-            args += list(chosen.extra_args)
+            if reencode not in {True, False, "auto"}:
+                raise ValidationError("reencode must be True, False, or 'auto'", reencode=reencode)
+            use_copy = reencode is False
+            reason = "explicit reencode=False"
+            if reencode == "auto":
+                use_copy, reason = concat_copy_compatible(videos, chosen)
+            LOG.info("concat codec decision", extra={"copy": use_copy, "reason": reason})
+
+            args = ["-f", "concat", "-safe", "0", "-i", str(list_file)]
+            if use_copy:
+                args += ["-c", "copy"]
+            else:
+                args += ["-c:v", chosen.video_codec]
+                if chosen.audio_codec != "none":
+                    args += ["-c:a", chosen.audio_codec]
+                args += list(chosen.extra_args)
             args += [str(target)]
             run_ffmpeg(args)
         finally:
@@ -152,18 +191,30 @@ class Compositor:
         output: str | Path,
         *,
         preset: str = "h264",
+        video_copy: bool | str = "auto",
     ) -> Path:
         """Combine a video and an audio file into the delivery format."""
 
         chosen = get_preset(preset)
         target = self._target(output)
-        args = ["-i", str(video), "-i", str(audio), "-map", "0:v:0", "-map", "1:a:0",
-                "-c:v", chosen.video_codec]
+        if video_copy not in {True, False, "auto"}:
+            raise ValidationError("video_copy must be True, False, or 'auto'", video_copy=video_copy)
+        if video_copy is True:
+            use_copy, reason = True, "explicit video_copy=True"
+        elif video_copy is False:
+            use_copy, reason = False, "explicit video_copy=False"
+        else:
+            use_copy, reason = video_copy_compatible(video, chosen)
+        LOG.info("mux video codec decision", extra={"copy": use_copy, "reason": reason})
+
+        args = ["-i", str(video), "-i", str(audio), "-map", "0:v:0", "-map", "1:a:0"]
+        args += ["-c:v", "copy" if use_copy else chosen.video_codec]
         if chosen.audio_codec != "none":
             args += ["-c:a", chosen.audio_codec]
         else:
             args += ["-an"]
-        args += list(chosen.extra_args)
+        if not use_copy:
+            args += list(chosen.extra_args)
         args += ["-shortest", str(target)]
         run_ffmpeg(args)
         return target

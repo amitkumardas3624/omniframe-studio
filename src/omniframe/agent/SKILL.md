@@ -14,13 +14,14 @@ omniframe <subcommand> [options]
 All platform capabilities are exposed through the Typer CLI and can be invoked programmatically via the Python API or MCP (Model Context Protocol).
 
 #### Environment & Doctor
-- `omniframe doctor` — Report environment status (Python, Node, FFmpeg, Chromium, host app detection)
+- `omniframe doctor` — Report environment status (Python, Node, FFmpeg, Chromium, native accelerator, host app detection)
 - `omniframe tools --list` — List all 18 registered actions with JSON Schema contracts
 
 #### Project Lifecycle
 - `omniframe project validate <project.json>` — Validate an OmniProject document
 - `omniframe project init <name>` — Initialize a new OmniProject skeleton
 - `omniframe project render <project.json> --out <dir>` — Render to PNG frame sequence
+- `omniframe project render <project.json> --stream-to-ffmpeg <video>` — Opt-in raw RGBA streaming for exactly one renderable clip; incompatible with `--resume`
 - `omniframe project compose <project.json> --frames <dir> --out <video.mp4>` — Assemble video from frames
 - `omniframe project translate --translator <format> <project.json> <output>` — Translate between formats (FCPXML, EDL, CapCut, AE, Resolve)
 - `omniframe project report <project.json>` — Get structured timeline report
@@ -118,7 +119,8 @@ Structured `OmniFrameError` hierarchy with stable `code` field for agent branchi
 ## Development & Contribution
 - **Python 3.10+** (Windows 10/11, PowerShell)
 - **Dependencies**: `pydantic>=2.6,<3`, `PyYAML>=6.0`, `typer>=0.12`, `Pillow>=10.2`
-- **Optional**: `playwright>=1.44` (for `[render]` extra)
+- **Optional**: `playwright>=1.44` (for `[render]` extra), `pybind11>=2.11` (for `[native]` extra and CMake C++17 build)
+- **Fallback policy**: missing compiler, pybind11, or `_omniframe_native` selects the Python implementation automatically
 - **Testing**: `pytest>=8.0` with 128 tests; `@pytest.mark.render` for browser tests, `@pytest.mark.slow` for FFmpeg integration
 - **Package**: `pip install -e .` from repo root
 - **Entry point**: `omniframe` CLI script (Typer-based)
