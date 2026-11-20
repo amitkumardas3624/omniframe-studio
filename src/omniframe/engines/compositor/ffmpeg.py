@@ -212,6 +212,97 @@ def _guess_size(frames: Sequence[str | Path]) -> str:
         return "1920x1080"
 
 
+_CODEC_ALIASES = {
+    "libx264": {"h264", "avc1"},
+    "libx265": {"hevc", "h265"},
+    "hevc": {"hevc", "h265"},
+    "prores_ks": {"prores", "prores_ks"},
+    "libvpx-vp9": {"vp9", "libvpx-vp9"},
+}
+
+
+def _requested_pixel_format(preset: Any) -> str | None:
+    args = list(getattr(preset, "extra_args", ()))
+    for index, value in enumerate(args[:-1]):
+        if value == "-pix_fmt":
+            return str(args[index + 1])
+    return None
+
+
+def _container_from_path(path: str | Path) -> str:
+    suffix = Path(path).suffix.lower().lstrip(".")
+    return {"mp4": "mp4", "mov": "mov", "webm": "webm", "gif": "gif"}.get(suffix, suffix)
+
+
+def video_copy_compatible(video: str | Path, preset: Any = "h264") -> tuple[bool, str]:
+    """Explain whether a video can be copied into a preset without re-encoding."""
+
+    from .presets import get_preset
+
+    chosen = get_preset(preset) if isinstance(preset, str) else preset
+    if _container_from_path(video) != chosen.container:
+        return False, f"container {_container_from_path(video)!r} is not {chosen.container!r}"
+    try:
+        info = ffprobe_info(video)
+    except Exception as exc:
+        return False, f"ffprobe unavailable: {exc}"
+    streams = info.get("streams") or []
+    video_stream = next((s for s in streams if s.get("codec_type") == "video"), None)
+    if video_stream is None:
+        return False, "no video stream found"
+    accepted_codecs = _CODEC_ALIASES.get(chosen.video_codec, {chosen.video_codec})
+    codec = str(video_stream.get("codec_name") or "")
+    if codec not in accepted_codecs:
+        return False, f"video codec {codec!r} is not compatible with {chosen.video_codec!r}"
+    width = int(video_stream.get("width") or 0)
+    height = int(video_stream.get("height") or 0)
+    if width <= 0 or height <= 0:
+        return False, "video dimensions are missing"
+    pixel_format = _requested_pixel_format(chosen)
+    source_pixel_format = str(video_stream.get("pix_fmt") or "")
+    if pixel_format and source_pixel_format and pixel_format != source_pixel_format:
+        return False, f"pixel format {source_pixel_format!r} is not {pixel_format!r}"
+    rate = str(video_stream.get("r_frame_rate") or "")
+    if rate in {"", "0/0", "N/A"}:
+        return False, "frame rate metadata is missing"
+    return True, "codec, pixel format, dimensions, frame rate, and container are compatible"
+
+
+def concat_copy_compatible(videos: Sequence[str | Path], preset: Any = "h264") -> tuple[bool, str]:
+    """Return whether every segment has matching stream metadata for ``-c copy``."""
+
+    if not videos:
+        return False, "no videos supplied"
+    first_ok, first_reason = video_copy_compatible(videos[0], preset)
+    if not first_ok:
+        return False, f"first segment is incompatible: {first_reason}"
+    signatures: list[tuple[Any, ...]] = []
+    for video in videos:
+        try:
+            info = ffprobe_info(video)
+        except Exception as exc:
+            return False, f"ffprobe unavailable: {exc}"
+        streams = info.get("streams") or []
+        video_stream = next((s for s in streams if s.get("codec_type") == "video"), None)
+        audio_stream = next((s for s in streams if s.get("codec_type") == "audio"), None)
+        if video_stream is None:
+            return False, f"segment {video} has no video stream"
+        signatures.append(
+            (
+                video_stream.get("codec_name"),
+                video_stream.get("pix_fmt"),
+                video_stream.get("width"),
+                video_stream.get("height"),
+                video_stream.get("r_frame_rate"),
+                audio_stream.get("codec_name") if audio_stream else None,
+                audio_stream.get("sample_rate") if audio_stream else None,
+            )
+        )
+    if any(signature != signatures[0] for signature in signatures[1:]):
+        return False, "segment stream metadata differs"
+    return True, "all segment audio/video stream metadata matches"
+
+
 def __getattr__(name: str):
     """Lazily expose raw streaming without creating an import cycle."""
 
