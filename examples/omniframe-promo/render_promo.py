@@ -318,6 +318,9 @@ def render_project(
         "video_only_path": str(video_only),
         "audio_path": str(audio_path) if audio_path else None,
     }
+    from inspect_promo import inspect_delivery
+
+    report["inspection"] = inspect_delivery(final_path, output)
     _write_report(output, report)
     return report
 
