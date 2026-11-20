@@ -9,6 +9,7 @@ from __future__ import annotations
 import json
 import subprocess
 import sys
+import webbrowser
 from pathlib import Path
 from typing import Any, Optional
 
@@ -31,9 +32,11 @@ app = typer.Typer(
 project_app = typer.Typer(help="Project lifecycle commands.", no_args_is_help=True)
 checkpoint_app = typer.Typer(help="Checkpoint and rollback commands.", no_args_is_help=True)
 bridge_app = typer.Typer(help="Host application bridge commands.", no_args_is_help=True)
+inspect_app = typer.Typer(help="Visual and structural inspection.", no_args_is_help=True)
 app.add_typer(project_app, name="project")
 app.add_typer(checkpoint_app, name="checkpoint")
 app.add_typer(bridge_app, name="bridge")
+app.add_typer(inspect_app, name="inspect")
 
 
 # ---------------------------------------------------------------------------
@@ -122,6 +125,36 @@ def _run_fixes(report: dict[str, Any]) -> list[dict[str, Any]]:
             attempts.append({"component": "chromium", "status": "failed", "error": str(exc)})
 
     return attempts
+
+
+@app.command("mcp")
+def mcp_server() -> None:
+    """Run the standards-based MCP server over stdio."""
+
+    from ..mcp_server import main as run_mcp_server
+
+    run_mcp_server()
+
+
+@app.command("ui")
+def ui(
+    host: str = typer.Option("127.0.0.1", "--host", help="Interface to bind."),
+    port: int = typer.Option(8765, "--port", min=1, max=65535, help="Port to bind."),
+    open_browser: bool = typer.Option(False, "--open", help="Open the UI in the default browser."),
+) -> None:
+    """Start the local FastAPI control UI."""
+
+    try:
+        import uvicorn
+    except ImportError as exc:
+        _fail("The UI dependencies are not installed. Run: pip install -e '.[ui]'")
+        raise AssertionError from exc
+
+    url = f"http://{host}:{port}/ui"
+    if open_browser:
+        webbrowser.open(url)
+    typer.echo(f"OmniFrame Studio UI: {url}")
+    uvicorn.run("omniframe.backend.server:create_app", factory=True, host=host, port=port)
 
 
 @app.command()
@@ -294,13 +327,31 @@ def project_render(
     output: str = typer.Option("renders", "--out", help="Directory for the rendered frames."),
     engine: str = typer.Option("auto", "--engine", help="auto | code_video | cartoon_2d"),
     backend: str = typer.Option("auto", "--backend", help="auto | playwright | stub"),
+    cartoon_backend: str = typer.Option("auto", "--cartoon-backend", help="auto | python | native"),
     resume: bool = typer.Option(False, "--resume", help="Skip frames that already exist."),
+    stream_to_ffmpeg: Optional[str] = typer.Option(
+        None,
+        "--stream-to-ffmpeg",
+        help="Stream a single renderable clip as raw RGBA to this video path; disables PNG/resume.",
+    ),
 ) -> None:
-    """Render every renderable clip of a project to PNG frames."""
+    """Render clips to PNG frames, or opt-in stream one clip directly to FFmpeg."""
+
+    if stream_to_ffmpeg and resume:
+        _fail("--stream-to-ffmpeg cannot be combined with --resume; streaming has no checkpoint files.")
 
     doc = _load_project(project)
     out_dir = Path(output).expanduser()
     out_dir.mkdir(parents=True, exist_ok=True)
+
+    renderable = [
+        clip
+        for track in doc.sorted_tracks()
+        for clip in track.sorted_clips()
+        if clip.kind.value in {"code_scene", "cartoon_layer"}
+    ]
+    if stream_to_ffmpeg and len(renderable) != 1:
+        _fail("--stream-to-ffmpeg requires exactly one code_scene or cartoon_layer clip.")
 
     results: list[dict[str, Any]] = []
     for track in doc.sorted_tracks():
@@ -327,7 +378,12 @@ def project_render(
                     settle_timeout_ms=clip.code.settle_timeout_ms,
                 )
                 renderer = CodeVideoRenderer(backend=backend)
-                result = renderer.render(scene, out_dir / clip.id, resume=resume)
+                result = renderer.render(
+                    scene,
+                    out_dir / clip.id,
+                    resume=resume,
+                    stream_to_ffmpeg=stream_to_ffmpeg,
+                )
                 results.append({"clip": clip.id, **result.to_dict()})
             elif kind == "cartoon_layer":
                 from ..engines.cartoon_2d import CartoonScene, render_frames
@@ -337,12 +393,21 @@ def project_render(
                 cartoon = CartoonScene.from_spec(clip.cartoon)
                 cartoon.fps = doc.meta.fps
                 cartoon.duration_frames = clip.duration_frames
-                paths = render_frames(cartoon, out_dir / clip.id, resume=resume)
+                paths = render_frames(
+                    cartoon,
+                    out_dir / clip.id,
+                    resume=resume,
+                    backend=cartoon_backend,
+                    stream_to_ffmpeg=stream_to_ffmpeg,
+                )
                 results.append(
                     {
                         "clip": clip.id,
                         "frames": [str(p) for p in paths],
                         "count": len(paths),
+                        "stream_output": stream_to_ffmpeg,
+                        "stream_mode": stream_to_ffmpeg is not None,
+                        "backend": cartoon_backend,
                         "ok": True,
                     }
                 )
@@ -551,6 +616,78 @@ def bridge_script(
     except KeyError as exc:
         _fail(str(exc))
     _echo_json(result.to_dict())
+
+
+# ---------------------------------------------------------------------------
+# Inspection
+# ---------------------------------------------------------------------------
+
+@inspect_app.command("media")
+def inspect_media(
+    video: str = typer.Option(..., "--video", help="Video file to sample."),
+    output_dir: str = typer.Option("out/inspect", "--output-dir"),
+    count: int = typer.Option(12, "--count", help="How many frames to sample."),
+    contact_sheet: Optional[str] = typer.Option(None, "--contact-sheet"),
+) -> None:
+    """Extract frames from a video and build a contact sheet."""
+
+    from ..core.agent_runtime.inspect import build_contact_sheet, extract_frames
+
+    frames = extract_frames(video, output_dir, count=count)
+    sheet = None
+    if contact_sheet:
+        sheet = str(build_contact_sheet(frames, contact_sheet))
+    _echo_json(
+        {
+            "video": str(video),
+            "frame_count": len(frames),
+            "frames": [str(f) for f in frames],
+            "contact_sheet": sheet,
+        }
+    )
+
+
+@inspect_app.command("frames")
+def inspect_frames(
+    directory: str = typer.Option(..., "--directory", help="Directory of rendered frames."),
+    output: str = typer.Option(..., "--output", help="Where to write the sheet."),
+    columns: int = typer.Option(4, "--columns"),
+    strip: bool = typer.Option(False, "--strip", help="Build a horizontal strip instead."),
+) -> None:
+    """Build a contact sheet or frame strip from rendered frames."""
+
+    from ..core.agent_runtime.inspect import build_contact_sheet, frame_strip, list_image_frames
+
+    frames = list_image_frames(directory)
+    if not frames:
+        _fail(f"no PNG frames found in {directory}")
+    path = (
+        frame_strip(frames, output)
+        if strip
+        else build_contact_sheet(frames, output, columns=columns)
+    )
+    _echo_json({"output": str(path), "frame_count": len(frames), "strip": strip})
+
+
+@inspect_app.command("timeline")
+def inspect_timeline(
+    project: str = typer.Argument(...),
+    json_output: bool = typer.Option(False, "--json"),
+) -> None:
+    """Print a structured timeline summary of a project."""
+
+    from ..core.agent_runtime.inspect import timeline_report
+
+    report = timeline_report(_load_project(project))
+    if json_output:
+        _echo_json(report)
+        return
+    typer.secho(
+        f"{report['name']} - {report['resolution'][0]}x{report['resolution'][1]} "
+        f"@ {report['fps']}fps, {report['duration_seconds']}s"
+    )
+    for track in report["tracks"]:
+        typer.echo(f"  [{track['kind']}] {track['name']} - {track['clip_count']} clip(s)")
 
 
 # ---------------------------------------------------------------------------
