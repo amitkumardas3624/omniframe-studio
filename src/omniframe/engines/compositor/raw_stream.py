@@ -100,17 +100,15 @@ class RawVideoStream:
             except OSError:
                 pass
         try:
-            returncode = self._process.wait(timeout=self.timeout)
+            _stdout, stderr = self._process.communicate(timeout=self.timeout)
+            returncode = self._process.returncode
         except subprocess.TimeoutExpired as exc:
             self._process.kill()
-            self._process.wait(timeout=10)
+            _stdout, stderr = self._process.communicate(timeout=10)
             raise RenderError(
                 f"ffmpeg streaming timed out after {self.timeout:g}s.",
                 argv=self.argv,
             ) from exc
-        stderr = b""
-        if self._process.stderr is not None:
-            stderr = self._process.stderr.read() or b""
         if returncode != 0 and raise_on_error:
             tail = stderr.decode("utf-8", errors="replace").strip()[-1500:]
             raise RenderError(

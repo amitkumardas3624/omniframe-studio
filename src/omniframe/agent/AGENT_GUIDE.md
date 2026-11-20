@@ -11,7 +11,7 @@ result = call_action("environment.detect", {"include_hosts": True})
 # Returns: python version, node, ffmpeg, chromium, and host app detection
 
 # Step 2: List available tools
-result = call_action("tools --list")  
+result = call_action("tools --list")
 # Returns: JSON Schema for all 18 actions
 
 # Step 3: Route to best engine

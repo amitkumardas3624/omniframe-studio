@@ -8,6 +8,7 @@ from typing import Any, Sequence
 from ..._native import native_available, native_module
 from ...core.errors import EngineUnavailable, ValidationError
 from ...core.logging import get_logger
+from ..compositor.raw_stream import RawVideoStream
 from .scene import CartoonScene, Layer, evaluate_scene, lower_native_scene, resolve_source
 
 LOG = get_logger("engines.cartoon_2d.render")
@@ -135,6 +136,7 @@ def render_frame(
     output_path: str | Path,
     *,
     backend: str = "auto",
+    frame_sink: Any | None = None,
 ) -> Path:
     """Composite a frame with the native accelerator or Python reference path."""
 
@@ -172,8 +174,11 @@ def render_frame(
                     raise ValueError(f"native rasterizer returned {len(payload)} bytes; expected {expected}")
                 canvas = Image.frombytes("RGBA", (scene.width, scene.height), bytes(payload))
                 target = Path(output_path)
-                target.parent.mkdir(parents=True, exist_ok=True)
-                canvas.save(target)
+                if frame_sink is not None:
+                    frame_sink(canvas.tobytes("raw", "RGBA"))
+                else:
+                    target.parent.mkdir(parents=True, exist_ok=True)
+                    canvas.save(target)
                 return target
             except Exception as exc:
                 if choice == "native":
@@ -209,8 +214,11 @@ def render_frame(
         canvas.alpha_composite(image, (left, top))
 
     target = Path(output_path)
-    target.parent.mkdir(parents=True, exist_ok=True)
-    canvas.save(target)
+    if frame_sink is not None:
+        frame_sink(canvas.tobytes("raw", "RGBA"))
+    else:
+        target.parent.mkdir(parents=True, exist_ok=True)
+        canvas.save(target)
     return target
 
 
@@ -226,19 +234,38 @@ def render_frames(
     *,
     resume: bool = False,
     backend: str = "auto",
+    stream_to_ffmpeg: str | Path | None = None,
 ) -> list[Path]:
-    """Render the whole scene to a PNG sequence and return the frame paths."""
+    """Render a PNG sequence or stream raw RGBA frames directly to FFmpeg."""
+
+    if stream_to_ffmpeg is not None and resume:
+        raise ValidationError(
+            "stream_to_ffmpeg cannot be combined with resume/checkpoint rendering",
+            stream_to_ffmpeg=str(stream_to_ffmpeg),
+        )
 
     out_dir = Path(output_dir)
     out_dir.mkdir(parents=True, exist_ok=True)
-
     frames: list[Path] = []
-    for frame in range(scene.duration_frames):
-        target = out_dir / frame_filename(frame)
-        if resume and target.exists():
-            frames.append(target)
-            continue
-        frames.append(render_frame(scene, frame, target, backend=backend))
+    if stream_to_ffmpeg is None:
+        for frame in range(scene.duration_frames):
+            target = out_dir / frame_filename(frame)
+            if resume and target.exists():
+                frames.append(target)
+                continue
+            frames.append(render_frame(scene, frame, target, backend=backend))
+        return frames
+
+    with RawVideoStream(
+        stream_to_ffmpeg,
+        width=scene.width,
+        height=scene.height,
+        fps=scene.fps,
+        extra_args=("-pix_fmt", "yuv420p"),
+    ) as stream:
+        for frame in range(scene.duration_frames):
+            target = out_dir / frame_filename(frame)
+            render_frame(scene, frame, target, backend=backend, frame_sink=stream.write)
     return frames
 
 

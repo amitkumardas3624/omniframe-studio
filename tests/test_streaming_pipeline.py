@@ -7,6 +7,7 @@ import subprocess
 import pytest
 
 from omniframe.core.errors import ValidationError
+from omniframe.engines.cartoon_2d import CartoonScene, Layer, render_frames
 from omniframe.engines.code_video import CodeScene, CodeVideoRenderer
 from omniframe.engines.compositor.raw_stream import stream_rgba_frames
 
@@ -74,3 +75,19 @@ def test_renderer_streaming_resume_fails_closed(tmp_path):
             resume=True,
             stream_to_ffmpeg=tmp_path / "rendered.mp4",
         )
+
+
+def test_cartoon_streams_without_png_frames(tmp_path):
+    scene = CartoonScene(
+        width=32,
+        height=18,
+        fps=2,
+        duration_frames=4,
+        layers=[Layer(id="solid", kind="solid", color="#FF0000FF", x=16, y=9)],
+    )
+    output = tmp_path / "cartoon.mp4"
+    frames = render_frames(scene, tmp_path / "frames", stream_to_ffmpeg=output, backend="python")
+    assert frames == []
+    assert output.exists()
+    info = _ffprobe(output)
+    assert float(info["format"]["duration"]) == pytest.approx(2.0, abs=0.1)
