@@ -1,0 +1,195 @@
+{
+  "schema_version": "1.0",
+  "meta": {
+    "name": "omniframe-signal-to-cinema",
+    "version": "1.0",
+    "fps": 30,
+    "width": 1920,
+    "height": 1080,
+    "duration_frames": 900,
+    "color_space": "Rec.709",
+    "audio_sample_rate": 48000,
+    "audio_channels": 2,
+    "background": "#070B16"
+  },
+  "tracks": [
+    {
+      "id": "promo-code",
+      "name": "Signal to Cinema scenes",
+      "kind": "code_scene",
+      "index": 0,
+      "clips": [
+        {
+          "id": "hook",
+          "name": "Hook",
+          "kind": "code_scene",
+          "start_frame": 0,
+          "duration_frames": 90,
+          "code": {
+            "html": "<div id='scene'><div id='pulse'></div><div id='eyebrow'>OMNIFRAME STUDIO</div><div id='title'>What if your AI agent<br>could ship the video?</div><div id='line'></div></div>",
+            "css": "html,body,#scene{margin:0;width:1920px;height:1080px;overflow:hidden;background:#070B16;color:#F2F6FF;font-family:Inter,Arial,sans-serif}#scene{position:relative}#pulse{position:absolute;left:960px;top:420px;width:180px;height:180px;border:3px solid #56E0FF;border-radius:50%;box-shadow:0 0 80px #56E0FF66}#eyebrow{position:absolute;left:180px;top:210px;color:#56E0FF;font-size:24px;letter-spacing:8px;font-weight:700}#title{position:absolute;left:176px;top:290px;font-size:82px;line-height:1.03;font-weight:800;letter-spacing:-3px}#line{position:absolute;left:180px;top:540px;height:4px;width:420px;background:linear-gradient(90deg,#56E0FF,#9B7BFF);border-radius:4px}",
+            "javascript": "const t=__OMNIFRAME_FRAME__/Math.max(1,__OMNIFRAME_TOTAL_FRAMES__-1); const ease=1-Math.pow(1-t,3); const pulse=document.getElementById('pulse'); pulse.style.transform=`translate(-50%,-50%) scale(${0.25+ease*2.2})`; pulse.style.opacity=String(Math.min(1,t*3)); document.getElementById('title').style.opacity=String(Math.min(1,t*4)); document.getElementById('title').style.transform=`translateY(${(1-Math.min(1,t*4))*28}px)`; document.getElementById('line').style.width=`${420+ease*620}px`;",
+            "seed": 17,
+            "background": "#070B16",
+            "params": {"scene": "hook"},
+            "settle_timeout_ms": 120
+          }
+        },
+        {
+          "id": "prompt",
+          "name": "Agent prompt",
+          "kind": "code_scene",
+          "start_frame": 90,
+          "duration_frames": 150,
+          "code": {
+            "html": "<div id='scene'><div class='label'>AGENT REQUEST / 01</div><div id='terminal'><div class='top'><i></i><i></i><i></i><span>omniframe-agent</span></div><div id='copy'></div><div id='cursor'></div><div class='status'>● REQUEST ACCEPTED <b>signal-to-cinema</b></div></div><div class='side'>INPUT<br><strong>Natural language</strong><br><br>OUTPUT<br><strong>Production-ready</strong></div></div>",
+            "css": "html,body,#scene{margin:0;width:1920px;height:1080px;overflow:hidden;background:#070B16;color:#EAF2FF;font-family:Inter,Arial,sans-serif}#scene{position:relative}.label{position:absolute;left:160px;top:150px;color:#56E0FF;font-size:22px;letter-spacing:5px}.top{height:68px;padding:0 28px;display:flex;align-items:center;gap:10px;color:#8FA3C8;border-bottom:1px solid #33415F}.top i{width:12px;height:12px;border-radius:50%;background:#56E0FF}.top i:nth-child(2){background:#9B7BFF}.top i:nth-child(3){background:#A1B4D5}.top span{margin-left:16px}.terminal{position:absolute;left:160px;top:230px;width:1250px;height:530px;border:1px solid #3A4A6B;border-radius:20px;background:#0D1528;box-shadow:0 30px 100px #0008}.terminal>*{margin-left:32px}.status{position:absolute;left:0;bottom:30px;color:#56E0FF}.status b{color:#F2F6FF;margin-left:12px}.side{position:absolute;left:1500px;top:310px;color:#7D91B9;line-height:1.5;font-size:20px}.side strong{color:#F2F6FF;font-size:28px}",
+            "javascript": "const t=__OMNIFRAME_FRAME__/Math.max(1,__OMNIFRAME_TOTAL_FRAMES__-1); const text='Create a polished product scene from this idea.'; const shown=Math.floor(Math.min(1,t*1.8)*text.length); document.getElementById('copy').textContent='> '+text.slice(0,shown); document.getElementById('cursor').style.display=(Math.floor(t*12)%2?'none':'block'); document.getElementById('cursor').style.cssText+=';width:12px;height:28px;background:#56E0FF;display:inline-block;vertical-align:middle;margin-left:8px;';",
+            "seed": 19,
+            "background": "#070B16",
+            "params": {"scene": "prompt"},
+            "settle_timeout_ms": 120
+          }
+        },
+        {
+          "id": "structure",
+          "name": "Timeline and validation",
+          "kind": "code_scene",
+          "start_frame": 240,
+          "duration_frames": 180,
+          "code": {
+            "html": "<div id='scene'><div class='label'>STRUCTURE / 02</div><div id='timeline'><div class='track'><b>CODE SCENE</b><span></span></div><div class='track'><b>2D MOTION</b><span></span></div><div class='track'><b>AUDIO</b><span></span></div></div><div id='checks'><div>✓ schema validated</div><div>✓ checkpoint created</div><div>✓ tools routed</div></div><div id='badge'>READY TO RENDER</div></div>",
+            "css": "html,body,#scene{margin:0;width:1920px;height:1080px;overflow:hidden;background:#070B16;color:#F2F6FF;font-family:Inter,Arial,sans-serif}#scene{position:relative}.label{position:absolute;left:150px;top:130px;color:#9B7BFF;font-size:22px;letter-spacing:5px}#timeline{position:absolute;left:150px;top:260px;width:1200px}.track{height:84px;border-bottom:1px solid #33415F;display:flex;align-items:center;gap:36px;color:#8FA3C8}.track b{width:170px;color:#F2F6FF;font-size:20px}.track span{height:34px;width:0;border-radius:8px;background:linear-gradient(90deg,#56E0FF,#9B7BFF)}#checks{position:absolute;left:1500px;top:290px;color:#56E0FF;font-size:22px;line-height:2.3}#badge{position:absolute;left:150px;top:640px;color:#07111E;background:#56E0FF;padding:18px 28px;border-radius:9px;font-size:22px;font-weight:800;letter-spacing:2px}",
+            "javascript": "const t=__OMNIFRAME_FRAME__/Math.max(1,__OMNIFRAME_TOTAL_FRAMES__-1); document.querySelectorAll('.track span').forEach((el,i)=>el.style.width=`${Math.max(0,Math.min(1,t*1.6-i*.22))*760}px`); document.getElementById('checks').style.opacity=String(Math.max(0,Math.min(1,(t-.35)*3))); document.getElementById('badge').style.transform=`translateX(${(1-Math.min(1,t*2))*-30}px)`;",
+            "seed": 23,
+            "background": "#070B16",
+            "params": {"scene": "structure"},
+            "settle_timeout_ms": 120
+          }
+        },
+        {
+          "id": "render",
+          "name": "Render code and motion",
+          "kind": "code_scene",
+          "start_frame": 420,
+          "duration_frames": 210,
+          "code": {
+            "html": "<div id='scene'><div class='label'>RENDER / 03</div><div id='left'><div class='bar'></div><div class='code'>const scene = await<br>agent.render({<br>&nbsp;&nbsp;engine: 'code_video',<br>&nbsp;&nbsp;frames: 210<br>});</div></div><div id='right'><div class='orb'></div><div class='ring'></div><div class='nodes'>● · · ● · · ●</div></div><div id='counter'>FRAME 000 / 210</div></div>",
+            "css": "html,body,#scene{margin:0;width:1920px;height:1080px;overflow:hidden;background:#070B16;color:#F2F6FF;font-family:Inter,Arial,sans-serif}#scene{position:relative}.label{position:absolute;left:150px;top:120px;color:#56E0FF;font-size:22px;letter-spacing:5px}#left,#right{position:absolute;top:240px;width:720px;height:500px;border:1px solid #3A4A6B;border-radius:18px;background:#0D1528;overflow:hidden}.left{left:150px}.right{left:1050px}.bar{height:8px;background:linear-gradient(90deg,#56E0FF,#9B7BFF);width:0}.code{padding:56px;color:#AFC2E8;font:28px/1.65 Consolas,monospace}.orb{position:absolute;left:260px;top:140px;width:160px;height:160px;border-radius:50%;background:radial-gradient(circle at 35% 30%,#F2F6FF,#56E0FF 18%,#9B7BFF 55%,#171C45 70%);box-shadow:0 0 90px #56E0FF88}.ring{position:absolute;left:205px;top:85px;width:270px;height:270px;border:2px solid #56E0FF88;border-radius:50%}.nodes{position:absolute;left:160px;top:390px;color:#56E0FF;letter-spacing:24px;font-size:26px}#counter{position:absolute;left:150px;top:800px;color:#8FA3C8;font:20px Consolas,monospace}",
+            "javascript": "const t=__OMNIFRAME_FRAME__/Math.max(1,__OMNIFRAME_TOTAL_FRAMES__-1); const progress=Math.min(1,t*1.3); document.querySelector('.bar').style.width=`${progress*720}px`; document.querySelector('.orb').style.transform=`scale(${.75+progress*.35}) rotate(${progress*180}deg)`; document.querySelector('.ring').style.transform=`rotate(${progress*-220}deg) scale(${.8+progress*.25})`; document.getElementById('counter').textContent='FRAME '+String(Math.floor(progress*210)).padStart(3,'0')+' / 210';",
+            "seed": 29,
+            "background": "#070B16",
+            "params": {"scene": "render"},
+            "settle_timeout_ms": 120
+          }
+        },
+        {
+          "id": "inspect",
+          "name": "Compose and inspect",
+          "kind": "code_scene",
+          "start_frame": 630,
+          "duration_frames": 150,
+          "code": {
+            "html": "<div id='scene'><div class='label'>DELIVERY / 04</div><div id='preview'><div class='mini'>OMNI<br>FRAME</div><div class='mini'>RENDER<br>READY</div><div class='mini'>FINAL<br>PREVIEW</div></div><div id='progress'><span></span></div><div id='message'>Composing H.264 + AAC delivery</div><div id='ok'>✓ INSPECTED</div></div>",
+            "css": "html,body,#scene{margin:0;width:1920px;height:1080px;overflow:hidden;background:#070B16;color:#F2F6FF;font-family:Inter,Arial,sans-serif}#scene{position:relative}.label{position:absolute;left:150px;top:130px;color:#9B7BFF;font-size:22px;letter-spacing:5px}#preview{position:absolute;left:150px;top:270px;display:flex;gap:28px}.mini{width:280px;height:170px;border:1px solid #465779;border-radius:12px;background:linear-gradient(145deg,#16233D,#0B1122);display:flex;align-items:center;justify-content:center;text-align:center;color:#56E0FF;font-size:25px;font-weight:800}#progress{position:absolute;left:150px;top:550px;width:1050px;height:12px;background:#202D47;border-radius:10px;overflow:hidden}#progress span{display:block;height:100%;width:0;background:linear-gradient(90deg,#56E0FF,#9B7BFF)}#message{position:absolute;left:150px;top:610px;color:#8FA3C8;font:24px Consolas,monospace}#ok{position:absolute;left:1500px;top:600px;color:#56E0FF;font-size:30px;font-weight:800}",
+            "javascript": "const t=__OMNIFRAME_FRAME__/Math.max(1,__OMNIFRAME_TOTAL_FRAMES__-1); document.querySelector('#progress span').style.width=`${Math.min(1,t*1.3)*1050}px`; document.querySelectorAll('.mini').forEach((el,i)=>el.style.transform=`translateY(${(1-Math.min(1,t*2))*35*(i+1)}px)`); document.getElementById('ok').style.opacity=String(Math.max(0,Math.min(1,(t-.6)*4)));",
+            "seed": 31,
+            "background": "#070B16",
+            "params": {"scene": "inspect"},
+            "settle_timeout_ms": 120
+          }
+        },
+        {
+          "id": "cta",
+          "name": "Call to action",
+          "kind": "code_scene",
+          "start_frame": 780,
+          "duration_frames": 120,
+          "code": {
+            "html": "<div id='scene'><div id='mark'>◈</div><div id='title'>Describe it. Render it. Ship it.</div><div id='brand'>OmniFrame Studio</div><div id='rule'></div><div id='sub'>AI agents to final video.</div></div>",
+            "css": "html,body,#scene{margin:0;width:1920px;height:1080px;overflow:hidden;background:#070B16;color:#F2F6FF;font-family:Inter,Arial,sans-serif}#scene{position:relative;text-align:center}#mark{position:absolute;left:880px;top:170px;color:#56E0FF;font-size:120px;text-shadow:0 0 60px #56E0FF88}#title{position:absolute;left:0;right:0;top:390px;font-size:72px;font-weight:800;letter-spacing:-2px}#brand{position:absolute;left:0;right:0;top:550px;color:#56E0FF;font-size:30px;letter-spacing:7px;font-weight:800}#rule{position:absolute;left:620px;top:635px;width:680px;height:3px;background:linear-gradient(90deg,transparent,#56E0FF,#9B7BFF,transparent)}#sub{position:absolute;left:0;right:0;top:700px;color:#8FA3C8;font-size:25px}",
+            "javascript": "const t=__OMNIFRAME_FRAME__/Math.max(1,__OMNIFRAME_TOTAL_FRAMES__-1); const e=1-Math.pow(1-t,3); document.getElementById('mark').style.transform=`scale(${.5+e*.5}) rotate(${e*90}deg)`; document.getElementById('title').style.opacity=String(Math.min(1,t*3)); document.getElementById('brand').style.opacity=String(Math.max(0,Math.min(1,(t-.25)*3))); document.getElementById('sub').style.opacity=String(Math.max(0,Math.min(1,(t-.45)*3)));",
+            "seed": 37,
+            "background": "#070B16",
+            "params": {"scene": "cta"},
+            "settle_timeout_ms": 120
+          }
+        }
+      ]
+    },
+    {
+      "id": "signal-accent",
+      "name": "Original signal motion accent",
+      "kind": "2d_animation",
+      "index": 1,
+      "z": 5,
+      "clips": [
+        {
+          "id": "signal-accent",
+          "name": "Signal pulse overlay",
+          "kind": "cartoon_layer",
+          "start_frame": 420,
+          "duration_frames": 210,
+          "transform": {"position": [0, 0], "scale": [1, 1], "rotation": 0, "anchor": [0.5, 0.5], "opacity": 0.28},
+          "cartoon": {
+            "width": 1920,
+            "height": 1080,
+            "background": "#00000000",
+            "layers": [
+              {"id": "accent-ring", "name": "Accent ring", "kind": "vector", "color": "#56E0FFAA", "z": 4, "transform": {"position": [1510, 470], "scale": [1, 1], "rotation": 0, "anchor": [0.5, 0.5], "opacity": 0.7}, "keyframes": [{"frame": 0, "values": {"scale_x": 0.4, "scale_y": 0.4, "opacity": 0.0}}, {"frame": 90, "values": {"scale_x": 1.8, "scale_y": 1.8, "opacity": 0.45}}, {"frame": 209, "values": {"scale_x": 3.0, "scale_y": 3.0, "opacity": 0.0}}]},
+              {"id": "accent-node", "name": "Accent node", "kind": "vector", "color": "#9B7BFFFF", "z": 5, "transform": {"position": [1510, 470], "scale": [0.55, 0.55], "rotation": 0, "anchor": [0.5, 0.5], "opacity": 0.75}, "keyframes": [{"frame": 0, "values": {"scale_x": 0.3, "scale_y": 0.3}}, {"frame": 80, "values": {"scale_x": 1.1, "scale_y": 1.1}}, {"frame": 209, "values": {"scale_x": 0.6, "scale_y": 0.6}}]}
+            ],
+            "beats": [{"frame": 0, "beat": "render-start"}, {"frame": 90, "beat": "signal-expand"}, {"frame": 209, "beat": "fade"}]
+          }
+        }
+      ]
+    },
+    {
+      "id": "audio-main",
+      "name": "Original procedural music",
+      "kind": "audio",
+      "index": 2,
+      "clips": [
+        {
+          "id": "music-bed",
+          "name": "Original signal bed",
+          "kind": "audio",
+          "start_frame": 0,
+          "duration_frames": 900,
+          "source": "output/omniframe-promo-bed.wav",
+          "audio": {"source": "output/omniframe-promo-bed.wav", "volume": 0.72, "fade_in_frames": 30, "fade_out_frames": 90, "normalization": "peak", "target_lufs": -14}
+        }
+      ]
+    },
+    {
+      "id": "subtitle-main",
+      "name": "Promo captions",
+      "kind": "subtitle",
+      "index": 3,
+      "clips": [
+        {
+          "id": "captions",
+          "name": "Approved storyboard captions",
+          "kind": "subtitle",
+          "start_frame": 0,
+          "duration_frames": 900,
+          "source": "captions.srt",
+          "metadata": {"format": "srt", "burn_in_review": true}
+        }
+      ]
+    }
+  ],
+  "shots": [
+    {"id": "shot-hook", "name": "Hook", "index": 0, "start_frame": 0, "end_frame": 90, "description": "Signal pulse and product promise", "engine": "code_html_js", "tags": ["hook", "original"]},
+    {"id": "shot-prompt", "name": "Prompt", "index": 1, "start_frame": 90, "end_frame": 240, "description": "Agent request enters OmniFrame", "engine": "code_html_js", "tags": ["agent", "prompt"]},
+    {"id": "shot-structure", "name": "Structure", "index": 2, "start_frame": 240, "end_frame": 420, "description": "Timeline, schemas and checkpoints", "engine": "code_html_js", "tags": ["timeline", "validation"]},
+    {"id": "shot-render", "name": "Render", "index": 3, "start_frame": 420, "end_frame": 630, "description": "Code and 2D motion render together", "engine": "code_html_js", "tags": ["render", "motion"]},
+    {"id": "shot-inspect", "name": "Inspect", "index": 4, "start_frame": 630, "end_frame": 780, "description": "Compose, inspect and deliver", "engine": "ffmpeg_compositor", "tags": ["compose", "inspect"]},
+    {"id": "shot-cta", "name": "CTA", "index": 5, "start_frame": 780, "end_frame": 900, "description": "Final OmniFrame Studio call to action", "engine": "code_html_js", "tags": ["cta", "brand"]}
+  ],
+  "assets": [],
+  "render_targets": [
+    {"id": "main", "name": "OmniFrame promo delivery", "container": "mp4", "video_codec": "libx264", "audio_codec": "aac", "width": 1920, "height": 1080, "fps": 30, "path": "output/omniframe-promo.mp4", "preset": "medium"}
+  ],
+  "metadata": {"creative_direction": "Signal to Cinema", "reference_policy": "high-level style only; no reference media used", "rights": "original procedural assets and audio"}
+}
