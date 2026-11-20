@@ -16,4 +16,14 @@ every capability head-lessly:
 from __future__ import annotations
 
 __version__ = "0.1.0"
-__all__ = ["__version__"]
+
+
+def has_native_accelerator() -> bool:
+    """Return whether the optional compiled accelerator is available."""
+
+    from ._native import native_available
+
+    return native_available()
+
+
+__all__ = ["__version__", "has_native_accelerator"]
