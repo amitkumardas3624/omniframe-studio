@@ -160,6 +160,118 @@
       font-size: 0.9rem;
     }
 
+    .workspace-overview,
+    .tool-inspector {
+      max-width: 760px;
+      margin: 1rem auto;
+      padding: 1.5rem;
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+    }
+
+    .workspace-overview h1,
+    .tool-inspector h2 {
+      margin: 0 0 0.5rem;
+      color: var(--fg);
+    }
+
+    .workspace-overview p,
+    .tool-inspector p {
+      color: var(--muted);
+      line-height: 1.5;
+    }
+
+    .overview-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+      gap: 0.75rem;
+      margin-top: 1.25rem;
+    }
+
+    .overview-card {
+      padding: 0.9rem;
+      background: var(--bg-subtle);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+    }
+
+    .overview-card strong {
+      display: block;
+      margin-bottom: 0.35rem;
+      color: var(--accent);
+    }
+
+    .doctor-summary {
+      margin-top: 1rem;
+      padding: 0.75rem;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+    }
+
+    .doctor-summary ul {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+      gap: 0.4rem 1rem;
+      margin: 0;
+      padding-left: 1.25rem;
+      color: var(--muted);
+    }
+
+    .tool-link {
+      display: block;
+      width: 100%;
+      padding: 0.45rem 0.65rem;
+      border: 0;
+      border-radius: 5px;
+      background: transparent;
+      color: var(--muted);
+      text-align: left;
+      cursor: pointer;
+    }
+
+    .tool-link:hover,
+    .tool-link:focus {
+      background: var(--card);
+      color: var(--accent);
+      outline: none;
+    }
+
+    .tool-schema {
+      max-height: 260px;
+      overflow: auto;
+      padding: 0.75rem;
+      background: var(--bg-subtle);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      color: #b8c7d9;
+      font: 0.75rem/1.4 ui-monospace, SFMono-Regular, Consolas, monospace;
+      white-space: pre-wrap;
+    }
+
+    .tool-params {
+      width: 100%;
+      min-height: 100px;
+      margin-top: 0.75rem;
+      padding: 0.65rem;
+      resize: vertical;
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      color: var(--fg);
+      font: 0.8rem/1.4 ui-monospace, SFMono-Regular, Consolas, monospace;
+    }
+
+    .tool-run {
+      margin-top: 0.65rem;
+      padding: 0.45rem 0.8rem;
+      border: 1px solid var(--accent);
+      border-radius: 5px;
+      background: var(--accent-dim);
+      color: var(--accent);
+      cursor: pointer;
+    }
+
     /* Panels */
     .panel {
       background: var(--card);
@@ -240,6 +352,60 @@
       to { opacity: 1; transform: translateY(0); }
     }
 
+    .update-banner {
+      position: fixed;
+      top: 72px;
+      left: 280px;
+      right: 1rem;
+      z-index: 20;
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+      flex-wrap: wrap;
+      padding: 0.75rem 1rem;
+      background: #17324a;
+      border: 1px solid #2f88b8;
+      border-radius: 8px;
+      box-shadow: 0 8px 24px rgba(0, 0, 0, 0.25);
+    }
+
+    .update-banner[hidden] {
+      display: none;
+    }
+
+    .update-banner strong {
+      color: #7dd3fc;
+    }
+
+    .update-banner a {
+      color: #bae6fd;
+      text-decoration: underline;
+    }
+
+    .update-banner button {
+      border: 1px solid #7dd3fc;
+      border-radius: 5px;
+      padding: 0.35rem 0.7rem;
+      background: #0c4a6e;
+      color: #e0f2fe;
+      cursor: pointer;
+    }
+
+    .update-banner button:disabled {
+      cursor: wait;
+      opacity: 0.65;
+    }
+
+    .update-output {
+      flex-basis: 100%;
+      max-height: 8rem;
+      margin: 0;
+      overflow: auto;
+      color: #bae6fd;
+      font: 0.75rem/1.4 ui-monospace, SFMono-Regular, Consolas, monospace;
+      white-space: pre-wrap;
+    }
+
     /* Reduced motion */
     @media (prefers-reduced-motion: reduce) {
       * {
@@ -267,6 +433,17 @@
         <span class="text-sm text-muted" id="status-text">Initializing...</span>
       </div>
     </header>
+
+    <section id="update-banner" class="update-banner" role="status" aria-live="polite" hidden>
+      <div>
+        <strong>Update Available</strong>
+        <span id="update-version" class="text-sm">A newer OmniFrame Studio release is ready.</span>
+      </div>
+      <a id="update-release" href="#" target="_blank" rel="noreferrer" hidden>Release notes</a>
+      <button id="update-now" type="button">Update Now</button>
+      <button id="restart-now" type="button" hidden>Restart Server</button>
+      <pre id="update-output" class="update-output" hidden></pre>
+    </section>
 
     <!-- Sidebar -->
     <aside class="sidebar" id="sidebar">
@@ -328,7 +505,31 @@
 
     <!-- Main Content -->
     <main class="main" id="main">
-      <div class="main-empty" id="main-empty">
+      <section class="workspace-overview" id="workspace-overview">
+        <h1>OmniFrame Studio Workspace</h1>
+        <p>Monitor the local agent runtime, inspect tools, and launch rendering workflows from one control surface.</p>
+        <div class="overview-grid">
+          <div class="overview-card"><strong id="overview-tools">19</strong><span>registered agent tools</span></div>
+          <div class="overview-card"><strong id="overview-python">Checking...</strong><span>Python runtime</span></div>
+          <div class="overview-card"><strong id="overview-ffmpeg">Checking...</strong><span>FFmpeg</span></div>
+          <div class="overview-card"><strong id="overview-chromium">Checking...</strong><span>Chromium</span></div>
+        </div>
+        <div class="doctor-summary" id="doctor-summary">
+          <strong>Environment summary</strong>
+          <div id="doctor-status">Running doctor...</div>
+          <ul id="doctor-capabilities"></ul>
+        </div>
+        <button class="tool-run" type="button" onclick="runDoctor(this)">Run Doctor</button>
+      </section>
+      <section class="tool-inspector" id="tool-inspector" hidden>
+        <h2 id="tool-inspector-title">Tool inspector</h2>
+        <p id="tool-inspector-description">Choose a tool from the sidebar to inspect its schema.</p>
+        <pre id="tool-inspector-schema" class="tool-schema"></pre>
+        <textarea id="tool-params" class="tool-params" aria-label="Tool parameters" placeholder="{}">{}</textarea>
+        <button id="tool-run" class="tool-run" type="button" onclick="runSelectedTool()">Run tool</button>
+        <pre id="tool-result" class="tool-schema" hidden></pre>
+      </section>
+      <div class="main-empty" id="main-empty" hidden>
         <span>Select a panel from the sidebar</span>
       </div>
     </main>
@@ -342,8 +543,8 @@
       <div id="dashboard-content">
         <div style="color: var(--muted); font-size: 0.9rem;">
           <div>OmniFrame Studio Dashboard</div>
-          <div class="mt-2" id="doctor-status">Running doctor...</div>
-          <button class="btn btn-acent mt-2" onclick="runDoctor()">Run Doctor</button>
+          <div class="mt-2" id="dashboard-doctor-status">Waiting for environment check...</div>
+          <button class="btn btn-acent mt-2" type="button" onclick="runDoctor(this)">Run Doctor</button>
         </div>
       </div>
     </div>
@@ -415,64 +616,282 @@
   </div>
 
   <script>
-    // Initialize UI
+    let agentSocket = null;
+    let healthPollTimer = null;
+    let toolCatalog = [];
+    let selectedTool = null;
+
+    // Initialize all live UI surfaces after the DOM is ready.
     document.addEventListener('DOMContentLoaded', () => {
-      // Connect to WebSocket for agent activity
-      const ws = new WebSocket('ws://localhost:8765/ws/agent-activity');
-      const statusDot = document.getElementById('status-dot');
-      const statusText = document.getElementById('status-text');
-
-      ws.onopen = () => {
-        statusDot.style.background = 'var(--accent)';
-        statusText.textContent = 'Connected';
-      };
-
-      ws.onmessage = (event) => {
-        const data = JSON.parse(event.data);
-        // Handle agent activity messages
-        if (data.type === 'doctor') {
-          updateDoctorStatus(data.status);
-        }
-      };
-
-      ws.onclose = () => {
-        statusDot.style.background = '#ff4757';
-        statusText.textContent = 'Disconnected';
-      };
+      bindNavigation();
+      startConnectionMonitor();
+      loadTools();
+      runDoctor();
+      checkForUpdates();
+      renderDashboard();
     });
 
-    // Update doctor status
-    function updateDoctorStatus(status) {
-      const statusEl = document.getElementById('doctor-status');
-      if (status.all_good) {
-        statusEl.innerHTML = '<span class="badge badge-healthy">All systems operational</span>';
-      } else {
-        statusEl.innerHTML = '<span class="badge badge-critical">Issues detected</span>';
+    function setConnectionState(connected, detail = '') {
+      const statusDot = document.getElementById('status-dot');
+      const statusText = document.getElementById('status-text');
+      statusDot.style.background = connected ? 'var(--accent)' : 'var(--warning)';
+      statusText.textContent = connected ? 'Connected' : (detail || 'Checking connection...');
+    }
+
+    function startConnectionMonitor() {
+      const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+      const socketUrl = `${protocol}//${window.location.host}/ws/agent-activity`;
+      try {
+        agentSocket = new WebSocket(socketUrl);
+        agentSocket.onopen = () => {
+          setConnectionState(true);
+          if (healthPollTimer) {
+            clearInterval(healthPollTimer);
+            healthPollTimer = null;
+          }
+        };
+        agentSocket.onmessage = (event) => {
+          try {
+            const data = JSON.parse(event.data);
+            if (data.type === 'doctor') updateDoctorStatus(data.status);
+          } catch (error) {
+            console.debug('Agent activity message ignored:', error);
+          }
+        };
+        agentSocket.onerror = () => {
+          if (agentSocket) agentSocket.close();
+          fallbackHealthPoll();
+        };
+        agentSocket.onclose = () => fallbackHealthPoll();
+      } catch (error) {
+        fallbackHealthPoll();
       }
     }
 
-    // Run doctor
-    async function runDoctor() {
-      const btn = event.target;
-      btn.disabled = true;
-      btn.textContent = 'Running...';
-      
+    function fallbackHealthPoll() {
+      if (healthPollTimer) return;
+      setConnectionState(false, 'Checking health...');
+      const poll = async () => {
+        try {
+          const response = await fetch('/health', { cache: 'no-store' });
+          setConnectionState(response.ok, response.ok ? 'Connected' : 'Unavailable');
+        } catch (error) {
+          setConnectionState(false, 'Unavailable');
+        }
+      };
+      poll();
+      healthPollTimer = setInterval(poll, 5000);
+    }
+
+    const updateBanner = document.getElementById('update-banner');
+    const updateVersion = document.getElementById('update-version');
+    const updateRelease = document.getElementById('update-release');
+    const updateNowButton = document.getElementById('update-now');
+    const restartNowButton = document.getElementById('restart-now');
+    const updateOutput = document.getElementById('update-output');
+
+    function bindNavigation() {
+      document.querySelectorAll('.nav-link').forEach((link) => {
+        link.addEventListener('click', (event) => {
+          event.preventDefault();
+          const panelId = `${link.dataset.panel}-panel`;
+          showPanel(panelId);
+          if (link.dataset.panel === 'bridges') refreshBridges();
+        });
+      });
+    }
+
+    function renderDashboard() {
+      document.getElementById('workspace-overview').hidden = false;
+      document.getElementById('tool-inspector').hidden = true;
+      document.getElementById('main-empty').hidden = true;
+    }
+
+    async function loadTools() {
+      const toolsNav = document.getElementById('tools-nav');
       try {
-        const resp = await fetch('/api/v1/environment', {method: 'POST'});
-        const data = await resp.json();
-        updateDoctorStatus(data);
-      } catch (e) {
-        console.error('Doctor failed:', e);
+        const response = await fetch('/api/v1/tools', { cache: 'no-store' });
+        if (!response.ok) throw new Error(`tools request failed: ${response.status}`);
+        const payload = await response.json();
+        toolCatalog = (payload.result && payload.result.tools) || [];
+        document.getElementById('overview-tools').textContent = String(toolCatalog.length);
+        toolsNav.innerHTML = '';
+        toolCatalog.forEach((tool) => {
+          const button = document.createElement('button');
+          button.type = 'button';
+          button.className = 'tool-link';
+          button.textContent = tool.name;
+          button.title = tool.description || tool.name;
+          button.addEventListener('click', () => inspectTool(tool));
+          toolsNav.appendChild(button);
+        });
+      } catch (error) {
+        toolsNav.innerHTML = '<span class="text-muted">Tools unavailable</span>';
+        console.error('Tools load failed:', error);
+      }
+    }
+
+    function inspectTool(tool) {
+      selectedTool = tool;
+      document.getElementById('workspace-overview').hidden = true;
+      document.getElementById('tool-inspector').hidden = false;
+      document.getElementById('tool-inspector-title').textContent = tool.name;
+      document.getElementById('tool-inspector-description').textContent = tool.description || 'No description provided.';
+      document.getElementById('tool-inspector-schema').textContent = JSON.stringify(tool.inputSchema || {}, null, 2);
+      document.getElementById('tool-result').hidden = true;
+    }
+
+    async function runSelectedTool() {
+      if (!selectedTool) return;
+      const resultEl = document.getElementById('tool-result');
+      try {
+        const parameters = JSON.parse(document.getElementById('tool-params').value || '{}');
+        const response = await fetch('/api/v1/actions/execute', {
+          method: 'POST',
+          headers: {'Content-Type': 'application/json'},
+          body: JSON.stringify({action: selectedTool.name, parameters}),
+        });
+        const payload = await response.json();
+        resultEl.hidden = false;
+        resultEl.textContent = JSON.stringify(payload, null, 2);
+      } catch (error) {
+        resultEl.hidden = false;
+        resultEl.textContent = `Tool execution failed: ${error}`;
+      }
+    }
+
+    function appendUpdateLog(message) {
+      updateOutput.hidden = false;
+      updateOutput.textContent += `${message}\n`;
+      updateOutput.scrollTop = updateOutput.scrollHeight;
+    }
+
+    function showUpdateStatus(status) {
+      if (!status || !status.update_available) return;
+      updateBanner.hidden = false;
+      updateVersion.textContent = `Version ${status.latest_version} is available (current ${status.current_version}).`;
+      if (status.release_url) {
+        updateRelease.href = status.release_url;
+        updateRelease.hidden = false;
+      }
+    }
+
+    async function checkForUpdates() {
+      try {
+        const response = await fetch('/api/v1/system/update-status');
+        if (!response.ok) return;
+        const payload = await response.json();
+        showUpdateStatus(payload.result || payload);
+      } catch (error) {
+        console.debug('Update check unavailable:', error);
+      }
+    }
+
+    function handleUpdateEvent(event) {
+      if (event.event === 'log') appendUpdateLog(event.line);
+      if (event.event === 'started') appendUpdateLog('Starting update...');
+      if (event.event === 'error') appendUpdateLog(`Update failed: ${event.error}`);
+      if (event.event === 'completed') {
+        if (event.success && !event.skipped) {
+          appendUpdateLog('Update installed. Restart the server to load the new version.');
+          updateNowButton.hidden = true;
+          restartNowButton.hidden = false;
+          updateVersion.textContent = 'Update installed; restart required.';
+        } else if (event.skipped) {
+          appendUpdateLog(event.message || 'No update was applied.');
+        } else if (!event.success) {
+          appendUpdateLog('Update failed. Check the server log for details.');
+        }
+      }
+    }
+
+    async function runUpdate() {
+      updateNowButton.disabled = true;
+      updateOutput.textContent = '';
+      updateOutput.hidden = false;
+      appendUpdateLog('Checking update status...');
+      try {
+        const response = await fetch('/api/v1/system/update', { method: 'POST' });
+        const reader = response.body && response.body.getReader();
+        if (!reader) throw new Error('Streaming update response is unavailable');
+        const decoder = new TextDecoder();
+        let buffer = '';
+        while (true) {
+          const chunk = await reader.read();
+          buffer += decoder.decode(chunk.value || new Uint8Array(), { stream: !chunk.done });
+          const lines = buffer.split('\\n');
+          buffer = lines.pop() || '';
+          lines.filter(Boolean).forEach((line) => handleUpdateEvent(JSON.parse(line)));
+          if (chunk.done) break;
+        }
+        if (buffer.trim()) handleUpdateEvent(JSON.parse(buffer));
+      } catch (error) {
+        appendUpdateLog(`Update request failed: ${error}`);
       } finally {
-        btn.disabled = false;
-        btn.textContent = 'Run Doctor';
+        updateNowButton.disabled = false;
+      }
+    }
+
+    async function requestRestart() {
+      restartNowButton.disabled = true;
+      try {
+        const response = await fetch('/api/v1/system/restart', { method: 'POST' });
+        const payload = await response.json();
+        const result = payload.result || {};
+        appendUpdateLog(result.message || 'Restart the server using the displayed command.');
+        if (result.command) appendUpdateLog(`Command: ${result.command}`);
+      } catch (error) {
+        appendUpdateLog(`Restart request failed: ${error}`);
+      } finally {
+        restartNowButton.disabled = false;
+      }
+    }
+
+    updateNowButton.addEventListener('click', runUpdate);
+    restartNowButton.addEventListener('click', requestRestart);
+
+    // Update doctor status and render the real capability results.
+    function updateDoctorStatus(payload) {
+      const result = payload && payload.result ? payload.result : payload;
+      const report = result && result.report ? result.report : result;
+      const statusEl = document.getElementById('doctor-status');
+      const capabilities = Array.isArray(report && report.capabilities) ? report.capabilities : [];
+      const allGood = report && report.ready !== false;
+      statusEl.innerHTML = allGood
+        ? '<span class="badge badge-healthy">Environment ready</span>'
+        : '<span class="badge badge-critical">Issues detected</span>';
+      document.getElementById('dashboard-doctor-status').textContent = allGood ? 'Environment ready' : 'Issues detected';
+      document.getElementById('doctor-capabilities').innerHTML = capabilities.map((capability) => {
+        const mark = capability.available ? '✓' : '✗';
+        return `<li>${mark} ${capability.name}: ${capability.version || capability.detail || (capability.available ? 'available' : 'missing')}</li>`;
+      }).join('');
+      const byName = Object.fromEntries(capabilities.map((capability) => [capability.name, capability]));
+      document.getElementById('overview-python').textContent = byName.python?.available ? (byName.python.version || 'Available') : 'Missing';
+      document.getElementById('overview-ffmpeg').textContent = byName.ffmpeg?.available ? 'Available' : 'Missing';
+      document.getElementById('overview-chromium').textContent = byName.chromium?.available ? 'Available' : 'Missing';
+    }
+
+    // Run doctor; the button argument is explicit so this also works on initial load.
+    async function runDoctor(button = null) {
+      const buttons = button ? [button] : Array.from(document.querySelectorAll('[onclick*="runDoctor"]'));
+      buttons.forEach((item) => { item.disabled = true; item.textContent = 'Running...'; });
+      try {
+        const response = await fetch('/api/v1/environment', {method: 'GET', cache: 'no-store'});
+        if (!response.ok) throw new Error(`doctor request failed: ${response.status}`);
+        updateDoctorStatus(await response.json());
+      } catch (error) {
+        document.getElementById('doctor-status').innerHTML = '<span class="badge badge-critical">Doctor unavailable</span>';
+        document.getElementById('dashboard-doctor-status').textContent = 'Doctor unavailable';
+        console.error('Doctor failed:', error);
+      } finally {
+        buttons.forEach((item) => { item.disabled = false; item.textContent = 'Run Doctor'; });
       }
     }
 
     // Refresh bridges
     async function refreshBridges() {
       try {
-        const resp = await fetch('/api/v1/bridges', {method: 'POST'});
+        const resp = await fetch('/api/v1/bridges', {method: 'GET', cache: 'no-store'});
         const data = await resp.json();
         renderBridges(data.result || []);
       } catch (e) {
@@ -512,6 +931,7 @@
       // Show selected
       const panel = document.getElementById(panelId);
       if (panel) panel.style.display = 'block';
+      if (panelId === 'dashboard-panel') renderDashboard();
       // Update nav links
       document.querySelectorAll('.nav-link').forEach(link => {
         link.classList.toggle('active', link.dataset.panel === panelId.replace('-panel', ''));

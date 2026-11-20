@@ -2,20 +2,56 @@
 
 OmniFrame Studio is an open-source, agent-first video and animation control platform. It combines deterministic HTML/CSS/JS frame rendering, a Pillow-based 2D cartoon pipeline, FFmpeg composition, timeline translation, visual inspection, checkpoints, and bridges for Premiere Pro, After Effects, DaVinci Resolve, CapCut, and Krita.
 
+## One-Line Install
+
+Install the UI-enabled package directly from GitHub. The installers check Python, pip/uv, FFmpeg, and Playwright/Chromium, then run the environment doctor. Missing optional tools are reported with repair commands instead of failing silently.
+
+### Linux/macOS
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/gbd718106-cmyk/omniframe-studio/master/install.sh | bash
+```
+
+### Windows PowerShell
+
+```powershell
+iwr https://raw.githubusercontent.com/gbd718106-cmyk/omniframe-studio/master/install.ps1 -UseBasicParsing | iex
+```
+
+To install a fork or a different Git ref, set `OMNIFRAME_REPO_URL` before running the installer. For local development, use the editable install below instead of the online installer.
+
+## Updates
+
+Update checks are explicit and safe to run offline. Normal CLI, REST, and MCP responses only read the cached advisory; they never require GitHub to be reachable.
+
+```powershell
+# Check the configured GitHub release/tag metadata
+omniframe update check
+omniframe update check --json
+
+# Apply a known update using a shell-free pip command
+omniframe update apply
+# Alias:
+omniframe self-update
+```
+
+The Web UI checks `GET /api/v1/system/update-status`, shows an **Update Available** banner when a newer release is cached or found, and streams `POST /api/v1/system/update` progress. After a successful update, use `POST /api/v1/system/restart` or the UI restart prompt to reload the process.
+
+Configure the source and cache with `OMNIFRAME_REPO_SLUG`, `OMNIFRAME_UPDATE_URL`, `OMNIFRAME_UPDATE_CACHE`, `OMNIFRAME_UPDATE_TTL_SECONDS`, and `OMNIFRAME_UPGRADE_COMMAND`. GitHub failures fall back to the last cache or an offline status.
+
 ## Quickstart for AI Agents
 
 Requirements: Python 3.10+ on Windows 10/11 or another supported platform. FFmpeg is required for video composition. Chromium and Playwright are required for browser-backed code-video rendering; install them with the optional render extra.
 
 ```powershell
-# Clone and install
-python -m pip install -e .
-python -m pip install -e ".[render]"
+# Local editable development install with UI, browser rendering, and test tools
+python -m pip install -e ".[ui,render,dev]"
 python -m playwright install chromium
 # Optional native C++17/pybind11 accelerator; Python fallback remains automatic
 python -m pip install -e ".[native]"
 
 # Inspect the environment and action contracts
-omniframe doctor
+python -m omniframe.cli doctor --json
 omniframe tools --list
 
 # Validate, render, compose, and inspect an example

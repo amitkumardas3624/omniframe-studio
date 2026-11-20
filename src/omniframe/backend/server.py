@@ -25,18 +25,24 @@ from typing import Any, Dict, List, Optional
 
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect, Request
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import HTMLResponse, JSONResponse
+from fastapi.responses import HTMLResponse, JSONResponse, StreamingResponse
 from pydantic import BaseModel, Field
 
 from omniframe.core.agent_runtime.registry import get_registry, ActionRegistry
 from omniframe.core.agent_runtime.actions import register_builtin_actions
-from omniframe.core.config import get_config
+from omniframe.core.config import detect_environment, get_config
 from omniframe.engines.code_video import render_scene, CodeScene, CodeVideoRenderer
 from omniframe.engines.cartoon_2d import render_frames, CartoonScene
 from omniframe.engines.compositor import Compositor
 from omniframe.bridges import list_bridges, get_bridge
 from omniframe.core.timeline_schema.io import load_project, load_document
 from omniframe.core.errors import OmniFrameError
+from omniframe.updater import (
+    check_for_update,
+    get_cached_update_advisory,
+    restart_instructions,
+    stream_update_events,
+)
 
 # ── Logging ───────────────────────────────────────────────────────────────
 LOG = logging.getLogger("omniframe.backend")
@@ -67,6 +73,15 @@ class ActionOutput(BaseModel):
     result: Optional[Any] = None
     error: Optional[str] = None
     error_code: Optional[str] = None
+    update_available: bool = False
+    update_info: Optional[Dict[str, Any]] = None
+
+    def model_post_init(self, __context: Any) -> None:
+        if self.update_info is None:
+            advisory = get_cached_update_advisory()
+            if advisory:
+                self.update_available = True
+                self.update_info = advisory
 
 
 class ProjectLoad(BaseModel):
@@ -87,8 +102,9 @@ class CheckpointSave(BaseModel):
 
 
 def _register_actions(reg: ActionRegistry) -> None:
-    """Register all built-in actions."""
-    register_builtin_actions(reg)
+    """Register all built-in actions once per process."""
+    if not reg.has("environment.detect"):
+        register_builtin_actions(reg)
 
 
 @asynccontextmanager
@@ -98,7 +114,7 @@ async def lifespan(app: FastAPI) -> Any:
     reg = get_registry()
     _register_actions(reg)
     agent_registry = reg
-    LOG.info("OmniFrame Studio backend initialized — %d actions registered", len(reg))
+    LOG.info("OmniFrame Studio backend initialized — %d actions registered", len(reg.names()))
     yield
 
 
@@ -233,28 +249,59 @@ def create_app() -> FastAPI:
             LOG.exception("Error detecting bridge %s", bridge_name)
             return ActionOutput(success=False, error=str(e))
 
-    # ── Environment/doctor ──────────────────────────────────────────────────
+    # ── Tools and environment/doctor ────────────────────────────────────────
+
+    @app.get("/api/v1/tools")
+    async def tools() -> ActionOutput:
+        """Return the registered action schemas for the Web UI."""
+        from omniframe.core.agent_runtime.actions import ensure_builtin_actions
+
+        registry = ensure_builtin_actions()
+        return ActionOutput(
+            success=True,
+            result={"tools": registry.to_tool_schemas(), "count": len(registry.names())},
+        )
 
     @app.get("/api/v1/environment")
     async def environment() -> ActionOutput:
         """Probe the host machine for runtimes and applications."""
         try:
-            from omniframe.cli.main import doctor as doctor_cmd
-
-            # Parse doctor output
-            proc = subprocess.run(
-                [sys.executable, "-m", "omniframe", "doctor"],
-                capture_output=True,
-                text=True,
-                timeout=30,
-            )
+            report = detect_environment()
+            report.pop("capability_map", None)
             return ActionOutput(
                 success=True,
-                result={"output": proc.stdout, "errors": proc.stderr},
+                result={
+                    "report": report,
+                    "output": json.dumps(report, ensure_ascii=False),
+                    "errors": "",
+                },
             )
         except Exception as e:
             LOG.exception("Error running environment doctor")
             return ActionOutput(success=False, error=str(e))
+
+    # ── Update and restart helpers ──────────────────────────────────────────
+
+    @app.get("/api/v1/system/update-status")
+    async def update_status() -> ActionOutput:
+        """Return cached or freshly checked GitHub update metadata."""
+        status = await asyncio.to_thread(check_for_update)
+        return ActionOutput(success=True, result=status)
+
+    @app.post("/api/v1/system/update")
+    async def update_system() -> StreamingResponse:
+        """Stream explicit self-update progress as newline-delimited JSON."""
+
+        def events() -> Any:
+            for event in stream_update_events():
+                yield json.dumps(event, ensure_ascii=False) + "\n"
+
+        return StreamingResponse(events(), media_type="application/x-ndjson")
+
+    @app.post("/api/v1/system/restart")
+    async def restart_system() -> ActionOutput:
+        """Return safe instructions for reloading the updated process."""
+        return ActionOutput(success=True, result=restart_instructions())
 
     # ── WebSocket for agent activity stream ──────────────────────────────────
 
@@ -300,7 +347,7 @@ def create_app() -> FastAPI:
     @app.get("/ui", include_in_schema=False)
     async def get_ui(request: Request) -> HTMLResponse:
         """Serve the Web UI HTML page."""
-        ui_path = Path(__file__).parent.parent / "omniframe" / "ui" / "index.html"
+        ui_path = Path(__file__).resolve().parent.parent / "ui" / "index.html"
         if ui_path.exists():
             content = ui_path.read_text(encoding="utf-8")
             return HTMLResponse(content=content)

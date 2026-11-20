@@ -19,6 +19,7 @@ from .. import __version__
 from ..core.config import detect_environment, get_config
 from ..core.errors import OmniFrameError
 from ..core.logging import get_logger, setup_logging
+from ..updater import apply_update, check_for_update, get_cached_update_advisory
 
 LOG = get_logger("cli")
 
@@ -33,10 +34,12 @@ project_app = typer.Typer(help="Project lifecycle commands.", no_args_is_help=Tr
 checkpoint_app = typer.Typer(help="Checkpoint and rollback commands.", no_args_is_help=True)
 bridge_app = typer.Typer(help="Host application bridge commands.", no_args_is_help=True)
 inspect_app = typer.Typer(help="Visual and structural inspection.", no_args_is_help=True)
+update_app = typer.Typer(help="Check and apply OmniFrame updates.", no_args_is_help=True)
 app.add_typer(project_app, name="project")
 app.add_typer(checkpoint_app, name="checkpoint")
 app.add_typer(bridge_app, name="bridge")
 app.add_typer(inspect_app, name="inspect")
+app.add_typer(update_app, name="update")
 
 
 # ---------------------------------------------------------------------------
@@ -44,6 +47,12 @@ app.add_typer(inspect_app, name="inspect")
 # ---------------------------------------------------------------------------
 
 def _echo_json(payload: Any) -> None:
+    if isinstance(payload, dict):
+        advisory = get_cached_update_advisory()
+        if advisory:
+            payload = dict(payload)
+            payload.setdefault("update_available", True)
+            payload.setdefault("update_info", advisory)
     typer.echo(json.dumps(payload, indent=2, ensure_ascii=False, default=str))
 
 
@@ -125,6 +134,51 @@ def _run_fixes(report: dict[str, Any]) -> list[dict[str, Any]]:
             attempts.append({"component": "chromium", "status": "failed", "error": str(exc)})
 
     return attempts
+
+
+@update_app.command("check")
+def update_check(
+    json_output: bool = typer.Option(False, "--json", help="Emit the update status as JSON."),
+) -> None:
+    """Check GitHub for a newer OmniFrame Studio release."""
+
+    status = check_for_update(force=True)
+    if json_output:
+        _echo_json(status)
+        return
+    typer.secho("OmniFrame Studio update check", bold=True)
+    typer.echo(f"current: {status.get('current_version')}")
+    typer.echo(f"latest:  {status.get('latest_version') or 'unknown'}")
+    if status.get("update_available"):
+        typer.secho("update available", fg=typer.colors.YELLOW)
+        if status.get("release_url"):
+            typer.echo(f"release notes: {status['release_url']}")
+        typer.echo("apply with: omniframe self-update")
+    else:
+        typer.secho("up to date or offline", fg=typer.colors.GREEN)
+        if status.get("error"):
+            typer.echo(f"note: {status['error']}")
+
+
+def _perform_update() -> dict[str, Any]:
+    status = check_for_update(force=True)
+    result = apply_update(status)
+    result["update_status"] = status
+    return result
+
+
+@update_app.command("apply")
+def update_apply() -> None:
+    """Apply a known GitHub update using a shell-free upgrade command."""
+
+    _echo_json(_perform_update())
+
+
+@app.command("self-update")
+def self_update() -> None:
+    """Alias for ``omniframe update apply``."""
+
+    _echo_json(_perform_update())
 
 
 @app.command("mcp")

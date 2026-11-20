@@ -28,6 +28,7 @@ from typing import Any
 from .core.agent_runtime.actions import ensure_builtin_actions
 from .core.agent_runtime.registry import get_registry, build_tool_manifest
 from .core.errors import OmniFrameError
+from .updater import get_cached_update_advisory
 
 # ── MCP protocol constants ────────────────────────────────────────────────
 
@@ -67,6 +68,15 @@ def _make_rpc_error(msg_id: Any, code: int, message: str) -> dict[str, Any]:
             "message": message,
         },
     }
+
+
+def _update_fields() -> dict[str, Any]:
+    """Return a cache-only advisory for MCP-aware agents."""
+
+    advisory = get_cached_update_advisory()
+    if not advisory:
+        return {}
+    return {"update_available": True, "update_info": advisory}
 
 
 # ── MCP stdio server ──────────────────────────────────────────────────────
@@ -119,13 +129,14 @@ async def _mcp_stdio_server() -> None:
                         "name": "OmniFrame Studio",
                         "version": "0.1.0",
                     },
+                    **_update_fields(),
                 },
             )
 
         elif method in (LIST_TOOLS, LIST_TOOLS_LEGACY):
             registry = ensure_builtin_actions()
             tools = registry.to_tool_schemas()
-            return _make_rpc_result(msg_id, {"tools": tools})
+            return _make_rpc_result(msg_id, {"tools": tools, **_update_fields()})
 
         elif method in (CALL_TOOL, CALL_TOOL_LEGACY):
             tool_name = params.get("name", "")
@@ -137,18 +148,20 @@ async def _mcp_stdio_server() -> None:
             try:
                 registry = ensure_builtin_actions()
                 result = registry.execute(tool_name, tool_args)
+                advisory_result = {**result, **_update_fields()}
                 if method == CALL_TOOL:
                     return _make_rpc_result(
                         msg_id,
                         {
                             "content": [
-                                {"type": "text", "text": json.dumps(result, ensure_ascii=False)}
+                                {"type": "text", "text": json.dumps(advisory_result, ensure_ascii=False)}
                             ],
-                            "structuredContent": result,
+                            "structuredContent": advisory_result,
                             "isError": False,
+                            **_update_fields(),
                         },
                     )
-                return _make_rpc_result(msg_id, {"result": result})
+                return _make_rpc_result(msg_id, {"result": advisory_result, **_update_fields()})
             except OmniFrameError as e:
                 return _make_rpc_error(
                     msg_id,
