@@ -339,7 +339,7 @@ def test_contact_sheet_has_expected_grid(tmp_path: Path):
         Image.new("RGBA", (320, 180), (index * 20, 30, 80, 255)).save(frame_dir / f"frame_{index:06d}.png")
     sheet = build_contact_sheet(frame_dir, tmp_path / "contact-sheet.png", columns=4)
     assert sheet.exists()
-    assert Image.open(sheet).size == (640, 360)
+    assert Image.open(sheet).size == (1280, 400)
 ```
 
 - [ ] **Step 2: Run the test and confirm it fails**
