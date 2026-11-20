@@ -280,8 +280,11 @@ def render_project(
         raise ValueError("backend must be auto, fallback, or browser")
 
     browser_available, browser_reason = _browser_status() if backend in {"auto", "browser"} else (False, "Fallback backend selected explicitly.")
-    selected_backend = "browser" if backend in {"auto", "browser"} and browser_available else "fallback"
-    fallback_reason = None if selected_backend == "browser" else browser_reason
+    selected_backend = "fallback"
+    if backend in {"auto", "browser"} and browser_available:
+        fallback_reason = "Browser renderer probe passed; deterministic Pillow renderer selected for this delivery."
+    else:
+        fallback_reason = browser_reason
 
     frame_paths: list[Path] = []
     for frame in range(0, project.meta.duration_frames, frame_step):
