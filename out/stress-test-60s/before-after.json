@@ -1,0 +1,60 @@
+{
+  "workload": {
+    "duration_seconds": 60,
+    "fps": 24,
+    "resolution": [1280, 720],
+    "timeline_frames": 1440
+  },
+  "baseline": {
+    "report": "out/stress-test-60s/benchmark-report-baseline.json",
+    "requested_backend": "python",
+    "native_mode": "fallback",
+    "stream_mode": false,
+    "rendered_png_frames": 1440,
+    "png_frame_count_in_output": 1452,
+    "png_mib": 12.281,
+    "stage_wall_seconds_sum": 107.031,
+    "stage_cpu_seconds_sum": 96.046,
+    "peak_stage_rss_mb": 416.3,
+    "final_video_bytes": 1125188,
+    "concat_copy": true,
+    "mux_copy": true,
+    "video_duration_seconds": 59.916667,
+    "audio_duration_seconds": 60.0
+  },
+  "optimized": {
+    "report": "out/stress-test-60s/benchmark-report.json",
+    "requested_backend": "auto",
+    "native_mode": "python-fallback",
+    "stream_mode": true,
+    "rendered_png_frames": 0,
+    "png_frame_count_in_output": 12,
+    "png_mib": 0.122,
+    "stage_wall_seconds_sum": 105.29,
+    "stage_cpu_seconds_sum": 130.204,
+    "peak_stage_rss_mb": 699.0,
+    "final_video_bytes": 1131486,
+    "concat_copy": true,
+    "mux_copy": true,
+    "video_duration_seconds": 60.0,
+    "audio_duration_seconds": 60.0
+  },
+  "delta": {
+    "stage_wall_seconds": -1.741,
+    "stage_wall_percent": -1.63,
+    "stage_cpu_seconds": 34.158,
+    "stage_cpu_percent": 35.56,
+    "peak_rss_mb": 282.7,
+    "png_mib": -12.159,
+    "png_reduction_percent": 99.006,
+    "video_duration_delta_seconds": 0.083333,
+    "final_video_bytes_delta": 6298
+  },
+  "interpretation": [
+    "Streaming removed the 1,440-frame PNG sequence; the remaining 12 PNGs are inspection contact-sheet samples.",
+    "Both concat and audio mux selected FFmpeg stream copy for the video stream.",
+    "Native C++ was not used in this benchmark because the runtime extension was not installed; Python fallback was used.",
+    "Peak RSS increased because raw streaming keeps FFmpeg and browser work concurrent; this is a trade-off for avoiding frame files.",
+    "The optimized output has exact 60.000-second video and audio durations in the final ffprobe probe."
+  ]
+}
