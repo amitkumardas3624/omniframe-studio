@@ -198,6 +198,19 @@ class EngineRouter:
                 }
             )
 
+        # When a capability is requested, only engines that actually support it
+        # are eligible.  Falling back to an unrelated engine would silently
+        # produce the wrong kind of output.
+        if request.capability:
+            supporting = [
+                descriptor.id
+                for descriptor in self.engines
+                if request.capability in descriptor.capabilities
+            ]
+            eligible = [c for c in candidates if c["engine"] in supporting]
+            if eligible:
+                candidates = eligible
+
         candidates.sort(key=lambda c: (c["available"], c["score"]), reverse=True)
 
         if not candidates:
@@ -205,14 +218,19 @@ class EngineRouter:
                 engine=None,
                 available=False,
                 score=0.0,
-                reason="No engine matched the request.",
+                reason=(
+                    f"No engine supports the capability '{request.capability}'."
+                    if request.capability
+                    else "No engine matched the request."
+                ),
             )
 
         best = candidates[0]
         if not best["available"]:
+            missing = sorted({m for c in candidates for m in c["missing_requirements"]})
             reason = (
                 f"Best match '{best['engine']}' is unavailable on this host; "
-                f"missing: {', '.join(best['missing_requirements'])}."
+                f"missing: {', '.join(missing or best['missing_requirements'])}."
             )
             return EngineChoice(
                 engine=None,

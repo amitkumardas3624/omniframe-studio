@@ -69,6 +69,12 @@ def parse_time_to_frames(value: str | int | float, fps: float = 30.0) -> int:
         if unit == "f":
             return int(round(amount_f))
 
+    rational = re.match(r"^(\d+)/(\d+)s$", text)
+    if rational:
+        numerator, denominator = (float(g) for g in rational.groups())
+        if denominator:
+            return int(round(numerator / denominator * fps))
+
     try:
         return int(round(float(text) * fps))
     except ValueError as exc:
@@ -194,10 +200,11 @@ class FCPXMLTranslator(TimelineTranslator):
         if resources is not None:
             for fmt in resources.findall("format"):
                 fid = fmt.get("id", "")
+                frame_duration = self._parse_fraction(fmt.get("frameDuration", "1/30s"))
                 formats[fid] = {
                     "width": int(float(fmt.get("width", 1920))),
                     "height": int(float(fmt.get("height", 1080))),
-                    "fps": self._parse_fraction(fmt.get("frameDuration", "1/30s")),
+                    "fps": (1.0 / frame_duration) if frame_duration > 0 else 30.0,
                 }
                 if formats[fid]["width"] and formats[fid]["height"]:
                     meta.width = max(meta.width, formats[fid]["width"])
@@ -249,44 +256,44 @@ class FCPXMLTranslator(TimelineTranslator):
     def from_universal(self, project: OmniProject) -> str:
         fps = project.meta.fps
         resources: list[str] = []
-        asset_ids: dict[str, str] = {}
+        asset_refs: dict[str, str] = {}
 
-        fmt_id = f"r1"
+        fmt_id = "r1"
         resources.append(
-            f'    <format id="{fmt_id}" name="FFVideoFormat1080p{project.meta.height}p" '
+            f'    <format id="{fmt_id}" name="FFVideoFormat{project.meta.height}p" '
             f'frameDuration="{self._fraction(fps)}" width="{project.meta.width}" '
             f'height="{project.meta.height}"/>'
         )
 
+        # Assets: the project's declared assets first, then any clip source
+        # that no declared asset covers.
+        sources: list[tuple[str, str, str]] = []
         for asset in project.assets:
-            ref = f"r{len(asset_ids) + 2}"
-            asset_ids[asset.id] = ref
-            src = asset.path or asset.url or ""
+            sources.append(
+                (
+                    asset.id,
+                    asset.path or asset.url or "",
+                    str(asset.metadata.get("name", asset.id)),
+                )
+            )
+        for track in project.sorted_tracks():
+            for clip in track.sorted_clips():
+                if clip.source and not any(entry[1] == clip.source for entry in sources):
+                    sources.append((clip.id, clip.source, clip.name or clip.id))
+
+        for index, (asset_id, source, name) in enumerate(sources):
+            ref = f"r{index + 2}"
+            asset_refs[source] = ref
             resources.append(
-                f'    <asset id="{ref}" name="{_xml_escape(asset.id)}" '
-                f'src="{_xml_escape(src)}" start="0s" duration="0s" '
+                f'    <asset id="{ref}" name="{_xml_escape(name)}" '
+                f'src="{_xml_escape(source)}" start="0s" duration="0s" '
                 f'hasVideo="1" hasAudio="1" format="{fmt_id}"/>'
             )
 
-        tracks_xml: list[str] = []
+        spine_entries: list[str] = []
         for track in project.sorted_tracks():
-            if not track.clips:
-                continue
-            lane = [
-                f'      <lane id="{_xml_escape(track.id)}" locked="{"1" if track.locked else "0"}">'
-            ]
             for clip in track.sorted_clips():
-                lane.append(self._clip_xml(clip, asset_ids, fps))
-            lane.append("      </lane>")
-            tracks_xml.append("\n".join(lane))
-
-        spine = "\n".join(
-            [
-                "    <spine>",
-                "      " + "\n      ".join(tracks_xml),
-                "    </spine>",
-            ]
-        )
+                spine_entries.append(self._clip_xml(clip, asset_refs, fps))
 
         xml = (
             '<?xml version="1.0" encoding="UTF-8"?>\n'
@@ -295,12 +302,14 @@ class FCPXMLTranslator(TimelineTranslator):
             + "\n".join(resources)
             + "\n  </resources>\n"
             "  <library>\n"
-            "    <event name=\"OmniFrame Export\">\n"
-            "      <project name=\""
+            '    <event name="OmniFrame Export">\n'
+            '      <project name="'
             + _xml_escape(project.meta.name)
-            + "\">\n"
-            + spine
-            + "\n      </project>\n"
+            + '">\n'
+            "        <spine>\n"
+            + "\n".join(spine_entries)
+            + "\n        </spine>\n"
+            "      </project>\n"
             "    </event>\n"
             "  </library>\n"
             "</fcpxml>\n"
@@ -308,18 +317,19 @@ class FCPXMLTranslator(TimelineTranslator):
         return xml
 
     # -- internals -------------------------------------------------------
-    def _clip_xml(self, clip: Clip, asset_ids: dict[str, str], fps: float) -> str:
+    def _clip_xml(self, clip: Clip, asset_refs: dict[str, str], fps: float) -> str:
         offset = frames_to_fcpxml_time(clip.start_frame, fps)
         duration = frames_to_fcpxml_time(clip.duration_frames, fps)
         start = frames_to_fcpxml_time(clip.in_frame, fps)
-        ref = asset_ids.get(clip.metadata.get("asset_id", ""), "")
+        name = _xml_escape(clip.name or clip.id)
+        ref = asset_refs.get(clip.source or "")
         if ref:
             return (
-                f'        <asset-clip ref="{ref}" name="{_xml_escape(clip.name or clip.id)}" '
+                f'          <asset-clip ref="{ref}" name="{name}" '
                 f'offset="{offset}" start="{start}" duration="{duration}"/>'
             )
         return (
-            f'        <ref-clip ref="r{len(asset_ids) + 2}" name="{_xml_escape(clip.name or clip.id)}" '
+            f'          <ref-clip ref="r1" name="{name}" '
             f'offset="{offset}" start="{start}" duration="{duration}"/>'
         )
 
@@ -329,39 +339,50 @@ class FCPXMLTranslator(TimelineTranslator):
         track = Track(id="v1", name="Video 1", kind=TrackKind.VIDEO, index=0)
         cursor = 0
         clip_index = 0
+
+        elements: list[ET.Element] = []
         for child in list(spine):
+            if child.tag == "lane":
+                elements.extend(list(child))
+            else:
+                elements.append(child)
+
+        for child in elements:
             tag = child.tag
             offset = parse_time_to_frames(child.get("offset", "0s"), fps)
             duration = parse_time_to_frames(child.get("duration", "0s"), fps)
             if tag == "gap":
                 cursor = max(cursor, offset + duration)
                 continue
-            if tag in {"asset-clip", "resource-clip", "ref-clip"}:
-                start = parse_time_to_frames(child.get("start", "0s"), fps)
-                name = child.get("name", f"clip-{clip_index + 1}")
-                ref = child.get("ref", "")
-                asset = next((a for a in assets if a.metadata.get("format") == ref), None)
-                if asset is None and assets:
-                    asset = assets[0]
-                clip = Clip(
-                    id=f"c{clip_index + 1}",
-                    name=name,
-                    kind=ClipKind.VIDEO,
-                    start_frame=cursor,
-                    duration_frames=max(1, duration),
-                    source=asset.path if asset else None,
-                    in_frame=start,
-                    metadata={"fcpxml_ref": ref},
-                )
-                track.clips.append(clip)
-                clip_index += 1
-                cursor += max(1, duration)
+            if tag not in {"asset-clip", "resource-clip", "ref-clip"}:
+                continue
+
+            start = parse_time_to_frames(child.get("start", "0s"), fps)
+            name = child.get("name", f"clip-{clip_index + 1}")
+            ref = child.get("ref", "")
+            asset = next((a for a in assets if a.id == ref), None)
+            clip = Clip(
+                id=f"c{clip_index + 1}",
+                name=name,
+                kind=ClipKind.VIDEO,
+                start_frame=cursor,
+                duration_frames=max(1, duration),
+                source=asset.path if asset else None,
+                in_frame=start,
+                metadata={"fcpxml_ref": ref},
+            )
+            track.clips.append(clip)
+            clip_index += 1
+            cursor += max(1, duration)
         return [track] if track.clips else []
 
     def _detect_fps(self, root: ET.Element) -> float:
         fmt = root.find(".//format")
         if fmt is not None and fmt.get("frameDuration"):
-            return self._parse_fraction(fmt.get("frameDuration", "")) or 30.0
+            # ``frameDuration`` is the length of one frame ("1/30s" == 30 fps).
+            frame_duration = self._parse_fraction(fmt.get("frameDuration", ""))
+            if frame_duration > 0:
+                return 1.0 / frame_duration
         return 30.0
 
     @staticmethod

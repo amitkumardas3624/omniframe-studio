@@ -1,0 +1,329 @@
+{
+  "schema_version": "1.0",
+  "meta": {
+    "name": "full-studio-demo",
+    "version": "1.0",
+    "fps": 30,
+    "width": 1280,
+    "height": 720,
+    "duration_frames": 120,
+    "color_space": "Rec.709",
+    "audio_sample_rate": 48000,
+    "audio_channels": 2,
+    "background": "#05060c"
+  },
+  "tracks": [
+    {
+      "id": "code-1",
+      "name": "Code Intro",
+      "kind": "code_scene",
+      "index": 0,
+      "clips": [
+        {
+          "id": "intro",
+          "name": "Kinetic title overlay",
+          "kind": "code_scene",
+          "start_frame": 0,
+          "duration_frames": 90,
+          "in_frame": 0,
+          "transform": {
+            "position": [0, 0],
+            "scale": [1, 1],
+            "rotation": 0,
+            "anchor": [0.5, 0.5],
+            "opacity": 1
+          },
+          "opacity": 1,
+          "volume": 1,
+          "speed": 1,
+          "blend_mode": "normal",
+          "keyframes": [],
+          "effects": [],
+          "code": {
+            "html": "<html><body style=\"margin:0;background:#05060c;font-family:system-ui,sans-serif\"><div id=\"stage\" style=\"position:relative;width:1280px;height:720px;overflow:hidden\"><div id=\"bar\" style=\"position:absolute;left:100px;top:300px;height:10px;width:0;background:linear-gradient(90deg,#5ad,#a6f);border-radius:5px\"></div><div id=\"title\" style=\"position:absolute;left:80px;top:200px;color:#eef;font-size:48px;font-weight:800;letter-spacing:-1px\">OmniFrame Studio</div><div id=\"sub\" style=\"position:absolute;left:100px;top:280px;color:#8fa3c8;font-size:20px\"></div></div></body></html>",
+            "css": "",
+            "javascript": "const t = __OMNIFRAME_FRAME__ / (__OMNIFRAME_TOTAL_FRAMES__ - 1);\nconst eased = 1 - Math.pow(1 - t, 3);\nconst bar = document.getElementById('bar');\nbar.style.width = (800 * eased) + 'px';\nconst title = document.getElementById('title');\ntitle.style.opacity = Math.min(1, t * 3);\ntitle.style.transform = 'translateY(' + ((1 - Math.min(1, t * 3)) * 16) + 'px)';\nconst sub = document.getElementById('sub');\nsub.textContent = t > 0.5 ? 'Code-driven motion graphics active' : 'Initializing...';\nsub.style.opacity = Math.max(0, Math.min(1, (t - 0.2) * 5));",
+            "bootstrap": null,
+            "seed": 7,
+            "transparent": false,
+            "background": "#05060c",
+            "params": {},
+            "settle_timeout_ms": 250
+          },
+          "metadata": {}
+        }
+      ]
+    },
+    {
+      "id": "cartoon-1",
+      "name": "2D Animation",
+      "kind": "2d_animation",
+      "index": 1,
+      "clips": [
+        {
+          "id": "bounce",
+          "name": "Bouncing ball with squash and stretch",
+          "kind": "cartoon_layer",
+          "start_frame": 0,
+          "duration_frames": 48,
+          "in_frame": 0,
+          "transform": {
+            "position": [640, 360],
+            "scale": [1, 1],
+            "rotation": 0,
+            "anchor": [0.5, 0.5],
+            "opacity": 1
+          },
+          "opacity": 1,
+          "volume": 1,
+          "speed": 1,
+          "blend_mode": "normal",
+          "keyframes": [
+            {
+              "frame": 0,
+              "values": {"y": 360, "scale_x": 1.0, "scale_y": 1.0},
+              "easing": {"kind": "ease_in"},
+              "label": "fall"
+            },
+            {
+              "frame": 18,
+              "values": {"y": 120, "scale_x": 1.0, "scale_y": 1.0},
+              "easing": {"kind": "ease_out", "control": [0, 0, 1, 1]},
+              "label": "impact"
+            },
+            {
+              "frame": 24,
+              "values": {"y": 360, "scale_x": 1.35, "scale_y": 0.7},
+              "easing": {"kind": "ease_out"},
+              "label": "squash"
+            },
+            {
+              "frame": 34,
+              "values": {"y": 120, "scale_x": 0.9, "scale_y": 1.12},
+              "easing": {"kind": "linear"},
+              "label": "stretch"
+            },
+            {
+              "frame": 47,
+              "values": {"y": 360, "scale_x": 1.0, "scale_y": 1.0},
+              "easing": {"kind": "linear"},
+              "label": "settle"
+            }
+          ],
+          "timing": {},
+          "visible": true,
+          "cartoon": {
+            "width": 1280,
+            "height": 720,
+            "background": "#05060c",
+            "layers": [
+              {
+                "id": "ground",
+                "name": "Ground",
+                "kind": "solid",
+                "source": null,
+                "color": "#2A3550FF",
+                "z": 0,
+                "opacity": 1,
+                "transform": {
+                  "position": [640, 380],
+                  "scale": [9, 1],
+                  "rotation": 0,
+                  "anchor": [0.5, 0.5],
+                  "opacity": 1
+                },
+                "keyframes": [],
+                "timing": {},
+                "visible": true
+              },
+              {
+                "id": "ball",
+                "name": "Ball",
+                "kind": "vector",
+                "source": null,
+                "color": "#FF6B3DFF",
+                "z": 5,
+                "opacity": 1,
+                "transform": {
+                  "position": [640, 360],
+                  "scale": [1, 1],
+                  "rotation": 0,
+                  "anchor": [0.5, 0.5],
+                  "opacity": 1
+                },
+                "keyframes": [
+                  {
+                    "frame": 0,
+                    "values": {"y": 360, "scale_x": 1.0, "scale_y": 1.0},
+                    "easing": {"kind": "ease_in"},
+                    "label": "fall"
+                  },
+                  {
+                    "frame": 18,
+                    "values": {"y": 120, "scale_x": 1.0, "scale_y": 1.0},
+                    "easing": {"kind": "ease_out", "control": [0, 0, 1, 1]},
+                    "label": "impact"
+                  },
+                  {
+                    "frame": 24,
+                    "values": {"y": 360, "scale_x": 1.35, "scale_y": 0.7},
+                    "easing": {"kind": "ease_out"},
+                    "label": "squash"
+                  },
+                  {
+                    "frame": 34,
+                    "values": {"y": 120, "scale_x": 0.9, "scale_y": 1.12},
+                    "easing": {"kind": "linear"},
+                    "label": "stretch"
+                  },
+                  {
+                    "frame": 47,
+                    "values": {"y": 360, "scale_x": 1.0, "scale_y": 1.0},
+                    "easing": {"kind": "linear"},
+                    "label": "settle"
+                  }
+                ],
+                "timing": {},
+                "visible": true
+              },
+              {
+                "id": "caption",
+                "name": "Caption",
+                "kind": "text",
+                "source": null,
+                "color": "#E8ECF7FF",
+                "z": 10,
+                "opacity": 1,
+                "transform": {
+                  "position": [640, 60],
+                  "scale": [1, 1],
+                  "rotation": 0,
+                  "anchor": [0, 0],
+                  "opacity": 1
+                },
+                "keyframes": [],
+                "timing": {"text": "Squash and stretch", "font_size": 32},
+                "visible": true
+              }
+            ],
+            "camera": {
+              "position": [0, 0],
+              "scale": [1, 1],
+              "rotation": 0,
+              "anchor": [0.5, 0.5],
+              "opacity": 1
+            },
+            "camera_keyframes": [],
+            "dialogue": [
+              {"frame": 2, "speaker": "narrator", "text": "Every bounce is a keyframe.", "phoneme": "A"}
+            ],
+            "beats": [
+              {"frame": 18, "beat": "impact"},
+              {"frame": 24, "beat": "squash"},
+              {"frame": 34, "beat": "stretch"}
+            ],
+            "hold_frames": [40, 41]
+          }
+        }
+      ]
+    },
+    {
+      "id": "audio-1",
+      "name": "Audio Track",
+      "kind": "audio",
+      "index": 2,
+      "clips": [
+        {
+          "id": "music",
+          "name": "Background music",
+          "kind": "audio",
+          "start_frame": 0,
+          "duration_frames": 120,
+          "in_frame": 0,
+          "transform": {
+            "position": [0, 0],
+            "scale": [1, 1],
+            "rotation": 0,
+            "anchor": [0.5, 0.5],
+            "opacity": 1
+          },
+          "opacity": 1,
+          "volume": 0.7,
+          "speed": 1,
+          "blend_mode": "normal",
+          "keyframes": [],
+          "effects": [],
+          "metadata": {
+            "audio_file": "assets/bounce-music.mp3",
+            "normalisation": "ebu_r128"
+          }
+        },
+        {
+          "id": "sfx-bounce",
+          "name": "Bounce sound effect",
+          "kind": "audio",
+          "start_frame": 90,
+          "duration_frames": 10,
+          "in_frame": 0,
+          "transform": {
+            "position": [0, 0],
+            "scale": [1, 1],
+            "rotation": 0,
+            "anchor": [0.5, 0.5],
+            "opacity": 1
+          },
+          "opacity": 1,
+          "volume": 0.9,
+          "speed": 1,
+          "blend_mode": "normal",
+          "keyframes": [],
+          "effects": [],
+          "metadata": {
+            "audio_file": "assets/bounce-sfx.wav",
+            "duck_under": ["music"]
+          }
+        }
+      ]
+    }
+  ],
+  "shots": [
+    {
+      "id": "shot-1",
+      "name": "Full Studio Demo",
+      "index": 0,
+      "start_frame": 0,
+      "end_frame": 120,
+      "description": "Combined code-driven + 2D animation + audio render",
+      "engine": "code_html_js",
+      "transition_in": null,
+      "transition_out": null,
+      "tags": ["demo", "full-studio", "multi-engine"],
+      "metadata": {}
+    }
+  ],
+  "transitions": [],
+  "assets": [],
+  "render_targets": [
+    {
+      "id": "main",
+      "name": "Main delivery",
+      "container": "mp4",
+      "video_codec": "libx264",
+      "audio_codec": "aac",
+      "width": 1280,
+      "height": 720,
+      "fps": 30,
+      "path": "out/full-studio-demo.mp4",
+      "preset": "medium",
+      "bitrate": null,
+      "crf": null,
+      "transparent": false,
+      "extra_args": ["-pix_fmt", "yuv420p", "-movflags", "+faststart"]
+    }
+  ],
+  "scene_graph": {},
+  "metadata": {
+    "created_by": "omniframe-studio",
+    "template": "full-studio-demo"
+  }
+}

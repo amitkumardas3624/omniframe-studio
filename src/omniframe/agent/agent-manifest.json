@@ -1,0 +1,95 @@
+{
+  "name": "omniframe-studio",
+  "version": "0.1.0",
+  "description": "Open-source, agent-first video & animation control platform that unifies code-driven frame-by-frame rendering, 2D cartoon pipeline, and professional NLE/compositing bridges under one architecture.",
+  "type": "mcode-desktop-agent",
+  "api_version": "0.1.0",
+  "capabilities": [
+    "environment_detection",
+    "project_validation",
+    "project_translation",
+    "engine_routing",
+    "checkpoint_snapshot_restore",
+    "code_scene_rendering",
+    "cartoon_2d_rendering",
+    "video_composition",
+    "media_inspection",
+    "dcc_bridge_automation",
+    "timeline_diffing"
+  ],
+  "endpoints": {
+    "tools_schema": "agent/schemas/tools.json",
+    "action_registry": "core.agent_runtime:register_builtin_actions",
+    "environment_doctor": "omniframe doctor",
+    "project_validate": "omniframe project validate",
+    "project_render": "omniframe project render",
+    "project_compose": "omniframe project compose",
+    "project_inspect": "omniframe inspect",
+    "checkpoint_save": "omniframe checkpoint save",
+    "checkpoint_list": "omniframe checkpoint list",
+    "checkpoint_restore": "omniframe checkpoint restore",
+    "bridge_list": "omniframe bridge list",
+    "bridge_detect": "omniframe bridge detect"
+  },
+  "engines": {
+    "code_video": {
+      "description": "Code-driven frame rendering via HTML/CSS/JS with Playwright deterministic capture",
+      "requires": ["playwright", "chromium"],
+      "actions": ["render.code_scene"]
+    },
+    "cartoon_2d": {
+      "description": "2D cartoon animation rendering with layers, keyframes, and Pillow compositing",
+      "requires": ["Pillow"],
+      "actions": ["render.cartoon_frames"]
+    },
+    "compositor": {
+      "description": "FFmpeg-based video assembly with audio mixing, subtitles, LUTs, and export presets",
+      "requires": ["ffmpeg", "ffprobe"],
+      "actions": ["compose.video"]
+    }
+  },
+  "bridges": {
+    "available": [
+      "premiere_pro",
+      "after_effects",
+      "davinci_resolve",
+      "capcut",
+      "krita"
+    ],
+    "description": "DCC (Digital Content Creation) bridge adapters for host application integration",
+    "tier_labels": {
+      "premiere_pro": "REVERSE_ENGINEERED",
+      "after_effects": "REVERSE_ENGINEERED",
+      "davinci_resolve": "REVERSE_ENGINEERED",
+      "capcut": "REVERSE_ENGINEERED",
+      "krita": "DOCUMENTED_API"
+    }
+  },
+  "determinism": {
+    "strategy": "Frame-level seeded PRNG (mulberry32), CSS animation freeze, double-rAF settle, __OMNIFRAME_READY__ opt-in",
+    "prng": "mulberry32",
+    "per_frame_seed": true
+  },
+  "error_model": {
+    "hierarchy": "OmniFrameError with stable code field for agent branching",
+    "categories": ["E_RENDER", "E_BRIDGE_UNAVAILABLE", "E_SCHEMA", "E_VALIDATION", "E_ENGINE_UNAVAILABLE"]
+  },
+  "checkpoint_storage": {
+    "strategy": "Filesystem JSON snapshots under .omniframe/checkpoints/ with SHA-256 content hash",
+    "format": "JSON with content hash verification"
+  },
+  "test_markers": {
+    "render": "Tests requiring Playwright browser frame capture",
+    "slow": "Tests requiring FFmpeg integration"
+  },
+  "examples": {
+    "code-explainer": {
+      "description": "90-frame HTML/JS kinetic title project",
+      "output": "code-explainer.mp4 (30.8 KB)"
+    },
+    "cartoon-bounce": {
+      "description": "48-frame 2D squash/stretch ball animation",
+      "output": "cartoon-bounce.mp4 (15.9 KB)"
+    }
+  }
+}

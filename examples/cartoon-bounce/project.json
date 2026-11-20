@@ -1,0 +1,199 @@
+{
+  "schema_version": "1.0",
+  "meta": {
+    "name": "cartoon-bounce",
+    "version": "1.0",
+    "fps": 24,
+    "width": 960,
+    "height": 540,
+    "duration_frames": 48,
+    "color_space": "Rec.709",
+    "audio_sample_rate": 48000,
+    "audio_channels": 2,
+    "background": "#101425"
+  },
+  "tracks": [
+    {
+      "id": "cartoon-1",
+      "name": "Cartoon Scene",
+      "kind": "2d_animation",
+      "index": 0,
+      "clips": [
+        {
+          "id": "bounce",
+          "name": "Ball bounce with squash and stretch",
+          "kind": "cartoon_layer",
+          "start_frame": 0,
+          "duration_frames": 48,
+          "in_frame": 0,
+          "transform": {
+            "position": [0, 0],
+            "scale": [1, 1],
+            "rotation": 0,
+            "anchor": [0.5, 0.5],
+            "opacity": 1
+          },
+          "opacity": 1,
+          "volume": 1,
+          "speed": 1,
+          "blend_mode": "normal",
+          "keyframes": [],
+          "effects": [],
+          "cartoon": {
+            "width": 960,
+            "height": 540,
+            "background": "#101425",
+            "layers": [
+              {
+                "id": "ground",
+                "name": "Ground",
+                "kind": "solid",
+                "source": null,
+                "color": "#2A3550FF",
+                "z": 0,
+                "opacity": 1,
+                "transform": {
+                  "position": [480, 500],
+                  "scale": [9, 1],
+                  "rotation": 0,
+                  "anchor": [0.5, 0.5],
+                  "opacity": 1
+                },
+                "keyframes": [],
+                "timing": {},
+                "visible": true
+              },
+              {
+                "id": "ball",
+                "name": "Ball",
+                "kind": "vector",
+                "source": null,
+                "color": "#FF6B3DFF",
+                "z": 5,
+                "opacity": 1,
+                "transform": {
+                  "position": [480, 380],
+                  "scale": [1, 1],
+                  "rotation": 0,
+                  "anchor": [0.5, 0.5],
+                  "opacity": 1
+                },
+                "keyframes": [
+                  {
+                    "frame": 0,
+                    "values": {"y": 380, "scale_x": 1.0, "scale_y": 1.0},
+                    "easing": {"kind": "ease_in"},
+                    "label": "fall"
+                  },
+                  {
+                    "frame": 18,
+                    "values": {"y": 120, "scale_x": 1.0, "scale_y": 1.0},
+                    "easing": {"kind": "ease_out", "control": [0, 0, 1, 1]},
+                    "label": "impact"
+                  },
+                  {
+                    "frame": 24,
+                    "values": {"y": 380, "scale_x": 1.35, "scale_y": 0.7},
+                    "easing": {"kind": "ease_out"},
+                    "label": "squash"
+                  },
+                  {
+                    "frame": 34,
+                    "values": {"y": 120, "scale_x": 0.9, "scale_y": 1.12},
+                    "easing": {"kind": "linear"},
+                    "label": "stretch"
+                  },
+                  {
+                    "frame": 47,
+                    "values": {"y": 380, "scale_x": 1.0, "scale_y": 1.0},
+                    "easing": {"kind": "linear"},
+                    "label": "settle"
+                  }
+                ],
+                "timing": {},
+                "visible": true
+              },
+              {
+                "id": "caption",
+                "name": "Caption",
+                "kind": "text",
+                "source": null,
+                "color": "#E8ECF7FF",
+                "z": 10,
+                "opacity": 1,
+                "transform": {
+                  "position": [80, 60],
+                  "scale": [1, 1],
+                  "rotation": 0,
+                  "anchor": [0, 0],
+                  "opacity": 1
+                },
+                "keyframes": [],
+                "timing": {"text": "Squash and stretch", "font_size": 44},
+                "visible": true
+              }
+            ],
+            "camera": {
+              "position": [0, 0],
+              "scale": [1, 1],
+              "rotation": 0,
+              "anchor": [0.5, 0.5],
+              "opacity": 1
+            },
+            "camera_keyframes": [],
+            "dialogue": [
+              {"frame": 2, "speaker": "narrator", "text": "Every bounce is a keyframe.", "phoneme": "A"}
+            ],
+            "beats": [
+              {"frame": 18, "beat": "impact"},
+              {"frame": 24, "beat": "squash"},
+              {"frame": 34, "beat": "stretch"}
+            ],
+            "hold_frames": [40, 41]
+          },
+          "metadata": {}
+        }
+      ]
+    }
+  ],
+  "shots": [
+    {
+      "id": "shot-1",
+      "name": "Bounce",
+      "index": 0,
+      "start_frame": 0,
+      "end_frame": 48,
+      "description": "A ball bounces with classic squash and stretch.",
+      "engine": "cartoon_2d",
+      "transition_in": null,
+      "transition_out": null,
+      "tags": ["cartoon"],
+      "metadata": {}
+    }
+  ],
+  "transitions": [],
+  "assets": [],
+  "render_targets": [
+    {
+      "id": "main",
+      "name": "Main delivery",
+      "container": "mp4",
+      "video_codec": "h264",
+      "audio_codec": "aac",
+      "width": 960,
+      "height": 540,
+      "fps": 24,
+      "path": "out/cartoon-bounce.mp4",
+      "preset": "medium",
+      "bitrate": null,
+      "crf": null,
+      "transparent": false,
+      "extra_args": []
+    }
+  ],
+  "scene_graph": {},
+  "metadata": {
+    "created_by": "omniframe-studio",
+    "template": "cartoon-bounce"
+  }
+}

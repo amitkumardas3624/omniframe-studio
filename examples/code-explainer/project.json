@@ -1,0 +1,98 @@
+{
+  "schema_version": "1.0",
+  "meta": {
+    "name": "code-explainer",
+    "version": "1.0",
+    "fps": 30,
+    "width": 1280,
+    "height": 720,
+    "duration_frames": 90,
+    "color_space": "Rec.709",
+    "audio_sample_rate": 48000,
+    "audio_channels": 2,
+    "background": "#05060c"
+  },
+  "tracks": [
+    {
+      "id": "code-1",
+      "name": "Code Scene",
+      "kind": "code_scene",
+      "index": 0,
+      "clips": [
+        {
+          "id": "intro",
+          "name": "Kinetic title",
+          "kind": "code_scene",
+          "start_frame": 0,
+          "duration_frames": 90,
+          "in_frame": 0,
+          "transform": {
+            "position": [0, 0],
+            "scale": [1, 1],
+            "rotation": 0,
+            "anchor": [0.5, 0.5],
+            "opacity": 1
+          },
+          "opacity": 1,
+          "volume": 1,
+          "speed": 1,
+          "blend_mode": "normal",
+          "keyframes": [],
+          "effects": [],
+          "code": {
+            "html": "<html><body style=\"margin:0;background:#05060c;font-family:system-ui,sans-serif\"><div id=\"stage\" style=\"position:relative;width:1280px;height:720px;overflow:hidden\"><div id=\"bar\" style=\"position:absolute;left:120px;top:300px;height:10px;width:0;background:linear-gradient(90deg,#5ad,#a6f);border-radius:5px\"></div><div id=\"title\" style=\"position:absolute;left:120px;top:200px;color:#eef;font-size:64px;font-weight:800;letter-spacing:-1px\">OmniFrame Studio</div><div id=\"sub\" style=\"position:absolute;left:124px;top:340px;color:#8fa3c8;font-size:26px\"></div><div id=\"dot\" style=\"position:absolute;left:116px;top:293px;width:24px;height:24px;border-radius:50%;background:#5ad\"></div></div></body></html>",
+            "css": "",
+            "javascript": "const t = __OMNIFRAME_FRAME__ / (__OMNIFRAME_TOTAL_FRAMES__ - 1);\nconst eased = 1 - Math.pow(1 - t, 3);\nconst bar = document.getElementById('bar');\nbar.style.width = (1040 * eased) + 'px';\nconst dot = document.getElementById('dot');\ndot.style.left = (116 + 1040 * eased) + 'px';\nconst title = document.getElementById('title');\ntitle.style.opacity = Math.min(1, t * 4);\ntitle.style.transform = 'translateY(' + ((1 - Math.min(1, t * 4)) * 24) + 'px)';\nconst sub = document.getElementById('sub');\nsub.textContent = t > 0.55 ? 'Deterministic frames. Exact timing.' : 'Code-driven motion graphics.';\nsub.style.opacity = Math.max(0, Math.min(1, (t - 0.25) * 4));",
+            "bootstrap": null,
+            "seed": 7,
+            "transparent": false,
+            "background": "#05060c",
+            "params": {},
+            "settle_timeout_ms": 250
+          },
+          "metadata": {}
+        }
+      ]
+    }
+  ],
+  "shots": [
+    {
+      "id": "shot-1",
+      "name": "Title build",
+      "index": 0,
+      "start_frame": 0,
+      "end_frame": 90,
+      "description": "Kinetic title with an animated progress bar.",
+      "engine": "code_html_js",
+      "transition_in": null,
+      "transition_out": null,
+      "tags": ["explainer"],
+      "metadata": {}
+    }
+  ],
+  "transitions": [],
+  "assets": [],
+  "render_targets": [
+    {
+      "id": "main",
+      "name": "Main delivery",
+      "container": "mp4",
+      "video_codec": "h264",
+      "audio_codec": "aac",
+      "width": 1280,
+      "height": 720,
+      "fps": 30,
+      "path": "out/code-explainer.mp4",
+      "preset": "medium",
+      "bitrate": null,
+      "crf": null,
+      "transparent": false,
+      "extra_args": []
+    }
+  ],
+  "scene_graph": {},
+  "metadata": {
+    "created_by": "omniframe-studio",
+    "template": "code-explainer"
+  }
+}
