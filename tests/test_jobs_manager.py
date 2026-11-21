@@ -166,6 +166,25 @@ def test_stock_kind_without_callable_marks_failed_not_crash(tmp_path):
         mgr.shutdown()
 
 
+def test_cancel_wins_over_a_missing_worker(tmp_path):
+    """A cancel that races the claim must not be overwritten by ``failed``.
+
+    The HTTP API submits a stock kind into a manager with no concrete worker and
+    cancels it on the next request, so the worker's "no worker registered"
+    failure and the cancel write race on the same record. Whichever order they
+    land in, the user's cancel is the last word.
+    """
+    mgr, _ = _mk_manager(tmp_path, registry={})
+    try:
+        for _ in range(20):
+            job_id = mgr.submit("validate", {"probe": True})
+            mgr.cancel(job_id)
+            settled = _wait_status(mgr, job_id, {"done", "failed", "canceled"})
+            assert settled["status"] == "canceled"
+    finally:
+        mgr.shutdown()
+
+
 def test_failure_records_error(tmp_path):
     mgr, _ = _mk_manager(tmp_path, registry={"boom": _boom})
     try:

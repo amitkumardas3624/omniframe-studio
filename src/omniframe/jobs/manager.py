@@ -83,6 +83,10 @@ class JobManager:
         self._shutdown = threading.Event()
         self._cancel_flags: dict[str, CancelFlag] = {}
         self._flags_lock = threading.Lock()
+        #: Serialises lifecycle writes so a user cancel and a worker's claim or
+        #: terminal record cannot interleave in the store: whichever runs second
+        #: observes the first one's status, and ``cancel`` always ends the job.
+        self._transition_lock = threading.Lock()
         self._threads: list[threading.Thread] = []
 
         for _ in range(self._workers):
@@ -127,13 +131,14 @@ class JobManager:
         still-queued job is skipped when the worker next claims it. Returns the
         updated job record, or ``None`` if the job does not exist.
         """
-        if self._store.get_job(job_id) is None:
-            return None
-        with self._flags_lock:
-            flag = self._cancel_flags.get(job_id)
-        if flag is not None:
-            flag.cancel()
-        return self._store.update_job(job_id, status="canceled")
+        with self._transition_lock:
+            if self._store.get_job(job_id) is None:
+                return None
+            with self._flags_lock:
+                flag = self._cancel_flags.get(job_id)
+            if flag is not None:
+                flag.cancel()
+            return self._store.update_job(job_id, status="canceled")
 
     def retry(self, job_id: str) -> dict[str, Any] | None:
         """Re-queue a ``failed`` or ``canceled`` job, bumping ``attempts``.
@@ -213,25 +218,33 @@ class JobManager:
         with self._flags_lock:
             self._cancel_flags[job_id] = flag
         try:
-            job = self._store.get_job(job_id)
-            if job is None:
-                return
-            if job["status"] == "canceled":
-                return
-            self._store.update_job(job_id, status="running")
+            with self._transition_lock:
+                job = self._store.get_job(job_id)
+                if job is None:
+                    return
+                if job["status"] == "canceled":
+                    return
+                self._store.update_job(job_id, status="running")
 
             callable_ = self._registry.get(job["kind"])
             if callable_ is None:
                 # Known stock kind with no concrete worker registered: record a
-                # clear failure instead of crashing the pool.
-                self._store.update_job(
-                    job_id,
-                    status="failed",
-                    error=(
-                        f"no worker registered for job kind {job['kind']!r}; "
-                        f"registered kinds: {self._registered_kinds()}"
-                    ),
-                )
+                # clear failure instead of crashing the pool. A cancel can still
+                # land while this job is being claimed, so settle the record under
+                # the lock ``cancel`` uses and never overwrite that intent with a
+                # failure the caller already withdrew.
+                with self._transition_lock:
+                    if flag.cancelled:
+                        self._store.update_job(job_id, status="canceled")
+                    else:
+                        self._store.update_job(
+                            job_id,
+                            status="failed",
+                            error=(
+                                f"no worker registered for job kind {job['kind']!r}; "
+                                f"registered kinds: {self._registered_kinds()}"
+                            ),
+                        )
                 return
 
             if _accepts_cancel(callable_):
@@ -239,19 +252,24 @@ class JobManager:
             else:
                 result = callable_(job["payload"])
 
-            refreshed = self._store.get_job(job_id)
-            # A cancel may land while the callable is returning (e.g. during
-            # shutdown, which sets the flag before joining). Honor the in-memory
-            # flag directly so the job is deterministically left ``canceled``
-            # rather than being overwritten with ``done`` by a store-time race.
-            if flag.cancelled:
-                self._store.update_job(job_id, status="canceled")
-                return
-            if refreshed is not None and refreshed["status"] == "canceled":
-                return  # canceled while running; keep it canceled.
-            self._store.update_job(job_id, status="done", result=result)
+            with self._transition_lock:
+                # A cancel may land while the callable is returning (e.g. during
+                # shutdown, which sets the flag before joining). Honor the in-memory
+                # flag directly so the job is deterministically left ``canceled``
+                # rather than being overwritten with ``done`` by a store-time race.
+                if flag.cancelled:
+                    self._store.update_job(job_id, status="canceled")
+                else:
+                    refreshed = self._store.get_job(job_id)
+                    if refreshed is not None and refreshed["status"] == "canceled":
+                        return  # canceled while running; keep it canceled.
+                    self._store.update_job(job_id, status="done", result=result)
         except Exception as exc:
-            self._store.update_job(job_id, status="failed", error=str(exc))
+            with self._transition_lock:
+                if flag.cancelled:
+                    self._store.update_job(job_id, status="canceled")
+                else:
+                    self._store.update_job(job_id, status="failed", error=str(exc))
         finally:
             with self._flags_lock:
                 self._cancel_flags.pop(job_id, None)
