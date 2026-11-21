@@ -23,6 +23,7 @@ htmlcov/
 out/
 renders/
 examples/omniframe-promo/output*/
+examples/handwashing-2d/output*/
 *.mp4
 *.omniframe.json
 
