@@ -23,8 +23,9 @@ instead of pretending the import was optional — see *Carried Phase-4 deviation
 Verification levels in this report are the narrow ones the plan defines. Nothing here was executed
 on a machine with Premiere Pro, After Effects, DaVinci Resolve, CapCut or Krita installed; no codec
 was claimed as working that was not actually encoded and probed in Phase 5. The Phase-0..5 work was
-committed and pushed on the `omniframe-platform-hardening` branch on 2026-11-22, with the user's
-authorization.
+committed and pushed on 2026-11-22 with the user's authorization: first to the
+`omniframe-platform-hardening` branch, then fast-forwarded into `master` (a pure fast-forward —
+`origin/master` was an ancestor, so no history was rewritten).
 
 ---
 
@@ -386,7 +387,8 @@ recorded in every subsequent report and not regressed to (−2 net at Phase 5).
 6. Optional DCC hosts are absent, so bridge work is fixture-level (`bridges/*.py` runbook paths unexecuted).
 7. Aikido security-scan tooling was unavailable in this session; the repo has not been scanned by it, and
    that is recorded rather than implied clean.
-8. The Phase-0..5 work was uncommitted until the user authorized commit + push on 2026-11-22; see
+8. The Phase-0..5 work was uncommitted until the user authorized commit + push on 2026-11-22; it now
+   lives on both `master` and `omniframe-platform-hardening` at the same commit. See
    *Repository identity — raised, then resolved* for the branch and remote used.
 
 ---

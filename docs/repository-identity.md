@@ -39,6 +39,12 @@ repository default branch is `master`.
 The user named `https://github.com/amitkumardas3624/omniframe-studio` as canonical on
 2026-11-22 and authorized propagating it to every surface.
 
+The work was committed and pushed to the `omniframe-platform-hardening` branch and then
+fast-forwarded into `master`. The fast-forward was verified before pushing: the remote's `master`
+(`4759e40`) is an ancestor of the local `master` (`6749271`), which is in turn an ancestor of the
+hardening commit (`e430266`). So `master` advanced by 9 commits with **no history rewritten and no
+force push** — the old slug was the same project under the old username, not a divergent history.
+
 ## Surfaces updated
 
 | Surface | Change |
