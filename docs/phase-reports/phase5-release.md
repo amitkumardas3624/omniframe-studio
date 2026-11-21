@@ -484,10 +484,17 @@ extra and Chromium, `doctor --json` reports **`ready: true`**.
 ### CI on a hosted runner — and the defects it exposed
 
 This release is the first time the workflow ran on a real GitHub runner, so the "never executed on a
-hosted runner" limitation is now closed — and the runner immediately found three defects, one per
-attempt. None of them was visible locally, and two of them were real bugs in the library.
+hosted runner" limitation is now closed. During the 0.2.0 work it ran **nine** times: twice before the
+tag, seven times from the tag onward. Three defects had to be fixed on the way, none of them visible
+locally, and two of them real bugs in the library.
 
-On the tagged commit `f7626db`:
+The two hosted runs *before* the tag matter to the claim, so they are in the table: `install` 6/6 and
+`wheel` were green there too, and `test` was red on all three versions with the same collection error
+the tag then carried. In other words the tag was not the workflow's first contact with a runner, and
+the "never ran on a hosted runner" debt was already closed when it was cut.
+
+**Defect 1 — two test modules imported the optional UI framework unguarded** (`491a427`). On the
+tagged commit `f7626db`:
 
 - `install` (3.10/3.11/3.12 × no-extras/`[dev]`) — **6/6 passed**
 - `wheel` — **passed**
@@ -515,7 +522,7 @@ was never exercised as broken; the suite could not even be collected.
   It was previously undeclared — the UI tests only worked locally because an unrelated package
   happened to pull it in — and the marker keeps the 3.10 CI job installable.
 
-That fixed collection, but not the job. Three further runs were needed, and each one was a defect the
+That fixed collection, but not the job. Two more red runs followed, and each exposed a defect the
 local suite could not see because it runs on Windows.
 
 **Defect 2 — the streaming encoder never collected FFmpeg's exit status** (`4ebc7ea`). Run
@@ -569,14 +576,19 @@ after the fix it has not failed once.
 
 | Run | Commit | `install` | `wheel` | `test` |
 |---|---|---|---|---|
+| `44938110155` | `a330be2` (before the tag) | 6/6 | pass | fail — `fastapi` collection error, ×3 |
+| `44938278540` | `b2376dd` (before the tag) | 6/6 | pass | fail — same error, ×3 |
 | `44941271851` | `f7626db` (the tag) | 6/6 | pass | fail — `fastapi` collection error, ×3 |
 | `44942289090` | `491a427` | 6/6 | pass | fail — 10 tests, ×3 |
 | `44942830309` | `5bdd203` | 6/6 | pass | fail — closed stdin, ×3 |
 | `44945420622` | `4ebc7ea` | 6/6 | pass | fail — cancel race, 3.10 only |
 | `44946942008` | `4ebc7ea` | 6/6 | pass | pass — same commit, race won |
 | `44947420899` | `a87057b` | 6/6 | pass | **pass ×3** |
+| `44949858877` | `a036a67` (docs) | 6/6 | pass | **pass ×3** |
 
-The last row is the gate: all ten jobs success, on 3.10, 3.11 and 3.12.
+The `a87057b` row is the gate: all ten jobs success, on 3.10, 3.11 and 3.12. The row below it is the
+same ten jobs for the docs commit that introduced this section — a docs-only push, so it confirms
+rather than assumes that recording the history did not disturb the suite.
 
 **What the published artifacts contain.** The `v0.2.0` tag points at `f7626db`, so the published
 wheel and sdist carry the pre-fix form of both library defects above: a streamed render on POSIX

@@ -132,7 +132,7 @@ this section is the evidence.
 
 - The "new CI jobs never ran on a hosted runner" limitation is **closed**, and the full matrix is
   green at `a87057b` (run `44947420899`): six `install` jobs, `wheel`, and `test` on 3.10, 3.11 and
-  3.12. It took six runs and three defects to get there; the run table is in
+  3.12. It took nine hosted runs and three defects to get there; the run table is in
   `docs/phase-reports/phase5-release.md` under *CI on a hosted runner*.
 - `491a427` (tests, workflow and packaging metadata only): `tests/test_ui_server.py` and
   `tests/test_update_api.py` guard the optional framework with `pytest.importorskip("fastapi")`, the
