@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import os
+
 import pytest
 
 from omniframe.core.errors import PathSecurityError, ValidationError
@@ -70,6 +72,10 @@ def test_resolve_workspace_rejects_empty_root():
 
 def test_resolve_workspace_rejects_bare_or_root_path():
     # A bare/root path has no directory name to anchor the workspace in.
-    for bad in ("/", ".", "C:\\"):
+    # The drive-root spelling only exists on Windows; on POSIX "/" is the root.
+    bad_paths = ["/", "."]
+    if os.name == "nt":
+        bad_paths.append("C:\\")
+    for bad in bad_paths:
         with pytest.raises(ValidationError):
             resolve_workspace(bad)

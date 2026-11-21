@@ -126,6 +126,9 @@ def test_statuses_stay_inside_the_vocabulary() -> None:
 
 def test_encoder_listing_never_promotes_a_status(monkeypatch) -> None:
     """A codec in ``ffmpeg -encoders`` is capability, not evidence."""
+    # Pretend ffmpeg is installed so the result does not depend on the host:
+    # without it the capability is honestly "unknown" everywhere.
+    monkeypatch.setattr(compat, "_ffmpeg_binary", lambda: "ffmpeg")
     monkeypatch.setitem(
         compat._ENCODER_CACHE,
         "names",
@@ -141,6 +144,7 @@ def test_encoder_listing_never_promotes_a_status(monkeypatch) -> None:
 
 
 def test_missing_encoder_is_reported_as_such(monkeypatch) -> None:
+    monkeypatch.setattr(compat, "_ffmpeg_binary", lambda: "ffmpeg")
     monkeypatch.setitem(compat._ENCODER_CACHE, "names", {"libx264"})
     probe, _ = _recorder(False)
     report = compatibility_report({}, presets=["h264", "h265"], probe=probe)
