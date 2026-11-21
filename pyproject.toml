@@ -38,12 +38,13 @@ dev = [
   "pytest-cov>=5.0",
   "mypy>=1.9",
   "ruff>=0.4",
+  "tomli>=2.0; python_version < \"3.11\"",
 ]
 
 [project.urls]
-Homepage = "https://github.com/omniframe-studio/omniframe-studio"
-Documentation = "https://github.com/omniframe-studio/omniframe-studio/tree/main/docs"
-Issues = "https://github.com/omniframe-studio/omniframe-studio/issues"
+Homepage = "https://github.com/amitkumardas3624/omniframe-studio"
+Documentation = "https://github.com/amitkumardas3624/omniframe-studio/tree/master/docs"
+Issues = "https://github.com/amitkumardas3624/omniframe-studio/issues"
 
 [project.scripts]
 omniframe = "omniframe.cli.main:run"
@@ -61,10 +62,12 @@ omniframe = ["py.typed", "agent/schemas/*.json"]
 [tool.pytest.ini_options]
 minversion = "8.0"
 testpaths = ["tests"]
+pythonpath = ["src"]
 addopts = "-q --strict-markers"
 markers = [
   "render: tests that require a headless browser and actually capture frames",
   "slow: tests that take more than a couple of seconds",
+  "bridge_host: tests that require a real, installed proprietary host application",
 ]
 filterwarnings = ["ignore::DeprecationWarning"]
 

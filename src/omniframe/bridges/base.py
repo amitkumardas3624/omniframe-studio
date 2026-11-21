@@ -35,6 +35,7 @@ from pathlib import Path
 from typing import Any
 
 from ..core.logging import get_logger
+from .loss import LossItem, record_loss
 
 LOG = get_logger("bridges.base")
 
@@ -173,6 +174,22 @@ class ToolBridge(ABC):
             for child in sorted(path.rglob("*")):
                 if len(entries) >= 500:
                     report["truncated"] = True
+                    # Best-effort loss narrative, additive only: never changes
+                    # the existing keys and never raises when a field is read.
+                    try:
+                        inspected = len(entries)
+                        report["loss"] = record_loss(
+                            self.id,
+                            [
+                                LossItem(
+                                    feature="entries",
+                                    status="degraded",
+                                    reason=f"inspection truncated at {inspected} entries",
+                                )
+                            ],
+                        ).to_dict()
+                    except OSError:
+                        pass
                     break
                 entries.append(
                     {

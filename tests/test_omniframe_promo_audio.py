@@ -1,10 +1,13 @@
-import sys
+import importlib.util
 import wave
 from pathlib import Path
 
-PROMO_DIR = Path("examples/omniframe-promo").resolve()
-sys.path.insert(0, str(PROMO_DIR))
-from generate_audio import generate_bed  # noqa: E402
+PROMO_AUDIO = Path("examples/omniframe-promo/generate_audio.py").resolve()
+spec = importlib.util.spec_from_file_location("omniframe_promo_generate_audio", PROMO_AUDIO)
+assert spec is not None and spec.loader is not None
+promo_audio = importlib.util.module_from_spec(spec)
+spec.loader.exec_module(promo_audio)
+generate_bed = promo_audio.generate_bed
 
 
 def test_generated_bed_is_stereo_48khz_and_30_seconds(tmp_path):

@@ -27,6 +27,7 @@ from typing import Any, Callable
 
 from ...core.errors import DependencyMissing, EngineUnavailable
 from ...core.logging import get_logger
+from ..compositor.ffmpeg import CancelFlag
 from .scene import CodeScene
 
 LOG = get_logger("engines.code_video.backends")
@@ -111,11 +112,13 @@ class Backend(ABC):
         resume: bool,
         on_issue: IssueSink,
         on_frame: FrameSink | None = None,
+        cancel: CancelFlag | None = None,
     ) -> tuple[list[Path], bool]:
         """Render the scene.
 
         Returns the ordered frame paths and whether rendering completed
-        without a fatal error.
+        without a fatal error.  When ``cancel`` is provided and signalled, the
+        frame loop stops early and the render is reported as incomplete.
         """
 
     def close(self) -> None:
@@ -132,11 +135,20 @@ class PlaywrightBackend(Backend):
     name = "playwright"
 
     def __init__(self, *, headless: bool = True, browser_args: list[str] | None = None,
-                 timeout_ms: int = 30000) -> None:
+                 timeout_ms: int = 30000, sandbox: bool = False) -> None:
         self.headless = headless
         self.browser_args = list(browser_args or ["--force-color-profile=srgb",
                                                   "--disable-lcd-text",
                                                   "--font-render-hinting=none"])
+        # Sandbox flags are merged additively and never mutate the class-level
+        # default list above (browser_args is always a fresh copy).
+        if sandbox:
+            # Lazy import: keeps `jobs.safety` (and its parent `jobs` package)
+            # out of the backends import graph and avoids any import cycle while
+            # the jobs package is under construction.
+            from ...jobs.safety import browser_sandbox_args
+
+            self.browser_args = self.browser_args + browser_sandbox_args()
         self.timeout_ms = timeout_ms
         self._playwright = None
         self._browser = None
@@ -171,6 +183,7 @@ class PlaywrightBackend(Backend):
         resume: bool,
         on_issue: IssueSink,
         on_frame: FrameSink | None = None,
+        cancel: CancelFlag | None = None,
     ) -> tuple[list[Path], bool]:
         try:
             from playwright.sync_api import sync_playwright
@@ -185,6 +198,7 @@ class PlaywrightBackend(Backend):
         output_dir.mkdir(parents=True, exist_ok=True)
         frames: list[Path] = []
         fatal = False
+        canceled = False
         current_frame = -1
         reported_frames: set[int] = set()
 
@@ -228,6 +242,9 @@ class PlaywrightBackend(Backend):
                 self._prepare_page(page, scene)
 
                 for frame in range(scene.duration_frames):
+                    if cancel is not None and cancel.cancelled:
+                        canceled = True
+                        break
                     current_frame = frame
                     target = output_dir / frame_filename(frame)
                     if resume and target.exists():
@@ -264,6 +281,16 @@ class PlaywrightBackend(Backend):
                 except Exception:  # pragma: no cover - best effort
                     pass
 
+        if canceled:
+            on_issue(
+                "warning",
+                "render canceled by request",
+                None,
+                None,
+                "backend",
+                None,
+            )
+            return frames, False
         return frames, not fatal
 
     # -- internals ------------------------------------------------------
@@ -476,14 +503,19 @@ class StubBackend(Backend):
         resume: bool,
         on_issue: IssueSink,
         on_frame: FrameSink | None = None,
+        cancel: CancelFlag | None = None,
     ) -> tuple[list[Path], bool]:
         from PIL import Image, ImageDraw
 
         output_dir.mkdir(parents=True, exist_ok=True)
         frames: list[Path] = []
+        canceled = False
 
         text = str(scene.params.get("text", ""))
         for frame in range(scene.duration_frames):
+            if cancel is not None and cancel.cancelled:
+                canceled = True
+                break
             target = output_dir / frame_filename(frame)
             if resume and target.exists():
                 frames.append(target)
@@ -506,6 +538,16 @@ class StubBackend(Backend):
                 image.save(target)
                 frames.append(target)
 
+        if canceled:
+            on_issue(
+                "warning",
+                "render canceled by request",
+                None,
+                None,
+                "backend",
+                None,
+            )
+            return frames, False
         on_issue(
             "warning",
             "Chromium was unavailable - frames were rendered by the deterministic stub backend.",

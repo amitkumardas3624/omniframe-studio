@@ -1,5 +1,5 @@
 # One-line installer for OmniFrame Studio on Windows PowerShell.
-# Usage: irm https://raw.githubusercontent.com/gbd718106-cmyk/omniframe-studio/master/install.ps1 | iex
+# Usage: irm https://raw.githubusercontent.com/amitkumardas3624/omniframe-studio/master/install.ps1 | iex
 [CmdletBinding()]
 param()
 
@@ -9,7 +9,7 @@ $ErrorActionPreference = 'Stop'
 $repoUrl = if ($env:OMNIFRAME_REPO_URL) {
     $env:OMNIFRAME_REPO_URL
 } else {
-    'https://github.com/gbd718106-cmyk/omniframe-studio.git'
+    'https://github.com/amitkumardas3624/omniframe-studio.git'
 }
 
 function Write-Info([string]$Message) {

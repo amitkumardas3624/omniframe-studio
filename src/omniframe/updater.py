@@ -26,7 +26,7 @@ from .core.logging import get_logger
 
 LOG = get_logger("updater")
 
-DEFAULT_REPO_SLUG = "gbd718106-cmyk/omniframe-studio"
+DEFAULT_REPO_SLUG = "amitkumardas3624/omniframe-studio"
 DEFAULT_TTL_SECONDS = 6 * 60 * 60
 DEFAULT_TIMEOUT_SECONDS = 4.0
 _VERSION_RE = re.compile(r"(?P<core>\d+(?:\.\d+){0,3})(?P<suffix>[-+][0-9A-Za-z.-]+)?")

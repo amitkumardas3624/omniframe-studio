@@ -7,11 +7,11 @@ OmniFrame Studio exposes deterministic video and animation workflows through a P
 Fresh GitHub installs (the installers check Python, pip/uv, FFmpeg, Playwright/Chromium, and finish with `doctor`):
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/gbd718106-cmyk/omniframe-studio/master/install.sh | bash
+curl -fsSL https://raw.githubusercontent.com/amitkumardas3624/omniframe-studio/master/install.sh | bash
 ```
 
 ```powershell
-iwr https://raw.githubusercontent.com/gbd718106-cmyk/omniframe-studio/master/install.ps1 -UseBasicParsing | iex
+iwr https://raw.githubusercontent.com/amitkumardas3624/omniframe-studio/master/install.ps1 -UseBasicParsing | iex
 ```
 
 For local development from a checkout:

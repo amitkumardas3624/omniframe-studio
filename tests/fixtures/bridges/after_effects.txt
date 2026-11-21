@@ -1,0 +1,5 @@
+OmniFrame Studio - Adobe After Effects bridge
+ExtendScript
+app.project
+addComp
+buildComp

@@ -1,0 +1,54 @@
+{
+  "version": "13.0.0",
+  "name": "capcut-pin",
+  "fps": 30.0,
+  "duration": 2000000,
+  "canvas_config": {
+    "width": 1920,
+    "height": 1080
+  },
+  "materials": {
+    "videos": [],
+    "audios": []
+  },
+  "tracks": [
+    {
+      "id": "a1",
+      "name": "Audio 1",
+      "type": "audio",
+      "segments": [
+        {
+          "id": "c2",
+          "material_id": "",
+          "target_timerange": {
+            "start": 0,
+            "duration": 2000000
+          },
+          "source_timerange": {
+            "start": 0,
+            "duration": 2000000
+          }
+        }
+      ]
+    },
+    {
+      "id": "v1",
+      "name": "Video 1",
+      "type": "video",
+      "segments": [
+        {
+          "id": "c1",
+          "material_id": "",
+          "target_timerange": {
+            "start": 0,
+            "duration": 2000000
+          },
+          "source_timerange": {
+            "start": 0,
+            "duration": 2000000
+          }
+        }
+      ]
+    }
+  ]
+}

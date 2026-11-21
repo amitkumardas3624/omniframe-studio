@@ -10,9 +10,9 @@ This guide helps agents (LLM-based automation) operate the OmniFrame Studio plat
 result = call_action("environment.detect", {"include_hosts": True})
 # Returns: python version, node, ffmpeg, chromium, and host app detection
 
-# Step 2: List available tools
-result = call_action("tools --list")
-# Returns: JSON Schema for all 18 actions
+# Step 2: List available tools from the generated runtime manifest
+# Run in a shell: omniframe tools --list
+# Or inspect src/omniframe/agent/schemas/tools.json directly.
 
 # Step 3: Route to best engine
 result = call_action("engine.route", {
@@ -30,16 +30,15 @@ result = call_action("project.validate", {
 })
 
 # If valid, render
-result = call_action("project.render", {
-    "project": "examples/code-explainer/project.json",
-    "out": "/tmp/rendered"
+result = call_action("render.code_scene", {
+    "html": "<div id='scene'></div>",
+    "output_dir": "out/render",
 })
 
 # Compose to video
-result = call_action("project.compose", {
-    "project": "examples/code-explainer/project.json",
-    "frames": "/tmp/rendered/frames",
-    "out": "/tmp/output.mp4"
+result = call_action("compose.video", {
+    "frames": ["out/render/frame_000000.png"],
+    "output": "out/video.mp4",
 })
 ```
 
@@ -136,10 +135,10 @@ Every action follows a consistent contract pattern:
     "type": "object",
     "properties": {
       "frames": {"type": "array", "items": {"type": "string"}},
-      "count": {"type": "integer"}
+      "frame_count": {"type": "integer"}
     }
   },
-  "error_codes": ["E_RENDER", "E_ENGINE_UNAVAILABLE"],
+  "error_codes": ["E_RENDER", "E_ENGINE_UNAVAILABLE", "E_DEPENDENCY_MISSING"],
   "tags": ["render", "code"]
 }
 ```
@@ -152,7 +151,7 @@ Agents should:
 
 ## Determinism for Agents
 
-All rendering operations support seeded PRNG for reproducible output:
+Code-scene rendering supports seeded PRNG for reproducible output:
 
 ```python
 # Code scene with deterministic output
@@ -163,11 +162,10 @@ result = call_action("render.code_scene", {
     "transparent": false
 })
 
-# Cartoon frames with deterministic interpolation
+# Cartoon frames with schema-supported inputs
 result = call_action("render.cartoon_frames", {
     "scene": cartoon_spec,
-    "output_dir": "/frames",
-    "seed": 123
+    "output_dir": "/frames"
 })
 ```
 
@@ -194,7 +192,7 @@ except OmniFrameError as e:
 The platform also exposes an MCP server:
 
 ```
-mcp__omniframe list_tools    # List all 18 actions with schemas
+mcp__omniframe list_tools    # List the current generated tool manifest
 mcp__omniframe call_tool <name> <args_json>  # Call any action
 ```
 

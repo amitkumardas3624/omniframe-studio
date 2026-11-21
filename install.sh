@@ -1,9 +1,9 @@
 #!/usr/bin/env bash
 # One-line installer for OmniFrame Studio on Linux and macOS.
-# Usage: curl -fsSL https://raw.githubusercontent.com/gbd718106-cmyk/omniframe-studio/master/install.sh | bash
+# Usage: curl -fsSL https://raw.githubusercontent.com/amitkumardas3624/omniframe-studio/master/install.sh | bash
 set -euo pipefail
 
-REPO_URL="${OMNIFRAME_REPO_URL:-https://github.com/gbd718106-cmyk/omniframe-studio.git}"
+REPO_URL="${OMNIFRAME_REPO_URL:-https://github.com/amitkumardas3624/omniframe-studio.git}"
 
 info() {
   printf '\033[1;36m[omniframe]\033[0m %s\n' "$*"

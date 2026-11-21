@@ -1,34 +1,535 @@
 {
-  "$schema": "http://json-schema.org/draft-07/schema#",
-  "title": "OmniFrame Studio Agent Tools",
-  "type": "object",
-  "description": "JSON Schema registry of all 18 built-in actions for OmniFrame Studio agent automation.",
-  "version": "0.1.0",
-  "properties": {
-    "environment.detect": {
-      "type": "object",
+  "schema_version": "1.0",
+  "kind": "omniframe_tool_manifest",
+  "tools": [
+    {
+      "name": "bridge.detect",
+      "description": "Detect whether a host application is installed on this machine.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "bridge": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "bridge"
+        ]
+      },
+      "outputSchema": {
+        "type": "object"
+      },
+      "meta": {
+        "engine": "bridges",
+        "mutating": false,
+        "idempotent": true,
+        "preconditions": [],
+        "error_codes": [],
+        "tags": [
+          "bridge",
+          "doctor"
+        ]
+      }
+    },
+    {
+      "name": "bridge.generate_script",
+      "description": "Generate a host script or project document for an OmniProject.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "bridge": {
+            "type": "string"
+          },
+          "project": {
+            "type": "string"
+          },
+          "output_dir": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "bridge",
+          "project",
+          "output_dir"
+        ]
+      },
+      "outputSchema": {
+        "type": "object"
+      },
+      "meta": {
+        "engine": "bridges",
+        "mutating": false,
+        "idempotent": true,
+        "preconditions": [],
+        "error_codes": [],
+        "tags": [
+          "bridge",
+          "automation"
+        ]
+      }
+    },
+    {
+      "name": "bridge.inspect",
+      "description": "Read-only structural inspection of a host project file or folder.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "bridge": {
+            "type": "string"
+          },
+          "target": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "bridge",
+          "target"
+        ]
+      },
+      "outputSchema": {
+        "type": "object"
+      },
+      "meta": {
+        "engine": "bridges",
+        "mutating": false,
+        "idempotent": true,
+        "preconditions": [],
+        "error_codes": [],
+        "tags": [
+          "bridge",
+          "rae",
+          "inspect"
+        ]
+      }
+    },
+    {
+      "name": "bridge.list",
+      "description": "List every DCC bridge and its current availability.",
+      "inputSchema": {
+        "type": "object"
+      },
+      "outputSchema": {
+        "type": "object"
+      },
+      "meta": {
+        "engine": "bridges",
+        "mutating": false,
+        "idempotent": true,
+        "preconditions": [],
+        "error_codes": [],
+        "tags": [
+          "bridge",
+          "doctor"
+        ]
+      }
+    },
+    {
+      "name": "checkpoint.diff",
+      "description": "Diff two checkpoints and report the changes.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "before": {
+            "type": "string"
+          },
+          "after": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "before",
+          "after"
+        ]
+      },
+      "outputSchema": {
+        "type": "object"
+      },
+      "meta": {
+        "engine": "core",
+        "mutating": false,
+        "idempotent": true,
+        "preconditions": [],
+        "error_codes": [],
+        "tags": [
+          "checkpoint",
+          "diff"
+        ]
+      }
+    },
+    {
+      "name": "checkpoint.list",
+      "description": "List every stored checkpoint, newest first.",
+      "inputSchema": {
+        "type": "object"
+      },
+      "outputSchema": {
+        "type": "object"
+      },
+      "meta": {
+        "engine": "core",
+        "mutating": false,
+        "idempotent": true,
+        "preconditions": [],
+        "error_codes": [],
+        "tags": [
+          "checkpoint"
+        ]
+      }
+    },
+    {
+      "name": "checkpoint.restore",
+      "description": "Restore a checkpoint back over a project file.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "checkpoint_id": {
+            "type": "string"
+          },
+          "project": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "checkpoint_id",
+          "project"
+        ]
+      },
+      "outputSchema": {
+        "type": "object"
+      },
+      "meta": {
+        "engine": "core",
+        "mutating": true,
+        "idempotent": true,
+        "preconditions": [],
+        "error_codes": [],
+        "tags": [
+          "checkpoint",
+          "rollback"
+        ]
+      }
+    },
+    {
+      "name": "checkpoint.save",
+      "description": "Snapshot a project so a destructive edit can be rolled back.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "project": {
+            "type": "string"
+          },
+          "label": {
+            "type": "string",
+            "default": "auto"
+          }
+        },
+        "required": [
+          "project"
+        ]
+      },
+      "outputSchema": {
+        "type": "object"
+      },
+      "meta": {
+        "engine": "core",
+        "mutating": true,
+        "idempotent": true,
+        "preconditions": [],
+        "error_codes": [],
+        "tags": [
+          "checkpoint",
+          "safety"
+        ]
+      }
+    },
+    {
+      "name": "compose.video",
+      "description": "Assemble PNG frames into a video with FFmpeg.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "frames": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "output": {
+            "type": "string"
+          },
+          "fps": {
+            "type": "number",
+            "default": 30.0
+          },
+          "preset": {
+            "type": "string",
+            "default": "h264"
+          }
+        },
+        "required": [
+          "frames",
+          "output"
+        ]
+      },
+      "outputSchema": {
+        "type": "object"
+      },
+      "meta": {
+        "engine": "compositor",
+        "mutating": false,
+        "idempotent": true,
+        "preconditions": [],
+        "error_codes": [
+          "E_RENDER",
+          "E_ENGINE_UNAVAILABLE"
+        ],
+        "tags": [
+          "compose",
+          "export"
+        ]
+      }
+    },
+    {
+      "name": "engine.route",
+      "description": "Choose the best engine for a task given what is installed.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "capability": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "default": null
+          },
+          "preferred_engine": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "default": null
+          },
+          "required_capabilities": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "default": []
+          },
+          "excluded_engines": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "default": []
+          }
+        }
+      },
+      "outputSchema": {
+        "type": "object"
+      },
+      "meta": {
+        "engine": "core",
+        "mutating": false,
+        "idempotent": true,
+        "preconditions": [],
+        "error_codes": [],
+        "tags": [
+          "planner"
+        ]
+      }
+    },
+    {
+      "name": "environment.detect",
       "description": "Probe the host machine for runtimes and host applications.",
-      "input": {
+      "inputSchema": {
         "type": "object",
         "properties": {
           "include_hosts": {
             "type": "boolean",
-            "default": true,
-            "description": "Whether to check for host application executables."
+            "default": true
+          }
+        }
+      },
+      "outputSchema": {
+        "type": "object"
+      },
+      "meta": {
+        "engine": "core",
+        "mutating": false,
+        "idempotent": true,
+        "preconditions": [],
+        "error_codes": [],
+        "tags": [
+          "doctor",
+          "diagnostics"
+        ]
+      }
+    },
+    {
+      "name": "inspect.frames",
+      "description": "Build a contact sheet / frame strip from an existing frame directory.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "directory": {
+            "type": "string"
+          },
+          "output": {
+            "type": "string"
+          },
+          "columns": {
+            "type": "integer",
+            "default": 4
+          },
+          "strip": {
+            "type": "boolean",
+            "default": false
           }
         },
-        "required": []
+        "required": [
+          "directory",
+          "output"
+        ]
       },
-      "output": {
-        "type": "object",
-        "description": "Environment report with capability detectors."
+      "outputSchema": {
+        "type": "object"
       },
-      "tags": ["doctor", "diagnostics"]
+      "meta": {
+        "engine": "core",
+        "mutating": false,
+        "idempotent": true,
+        "preconditions": [],
+        "error_codes": [],
+        "tags": [
+          "inspect",
+          "vision"
+        ]
+      }
     },
-    "project.validate": {
-      "type": "object",
+    {
+      "name": "inspect.media",
+      "description": "Extract frames from a video and build a contact sheet for visual review.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "video": {
+            "type": "string"
+          },
+          "output_dir": {
+            "type": "string"
+          },
+          "count": {
+            "type": "integer",
+            "default": 12
+          },
+          "contact_sheet": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "default": null
+          }
+        },
+        "required": [
+          "video",
+          "output_dir"
+        ]
+      },
+      "outputSchema": {
+        "type": "object"
+      },
+      "meta": {
+        "engine": "core",
+        "mutating": false,
+        "idempotent": true,
+        "preconditions": [],
+        "error_codes": [],
+        "tags": [
+          "inspect",
+          "vision"
+        ]
+      }
+    },
+    {
+      "name": "project.report",
+      "description": "Return a structured, agent-readable summary of a project timeline.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "project": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "project"
+        ]
+      },
+      "outputSchema": {
+        "type": "object"
+      },
+      "meta": {
+        "engine": "core",
+        "mutating": false,
+        "idempotent": true,
+        "preconditions": [],
+        "error_codes": [],
+        "tags": [
+          "project",
+          "timeline"
+        ]
+      }
+    },
+    {
+      "name": "project.translate",
+      "description": "Translate a project between the universal timeline and a host format.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "translator": {
+            "type": "string",
+            "description": "e.g. fcpxml, edl, capcut_draft, ae_manifest"
+          },
+          "project": {
+            "type": "string"
+          },
+          "output": {
+            "type": "string"
+          },
+          "direction": {
+            "type": "string",
+            "enum": [
+              "to_host",
+              "to_universal"
+            ],
+            "default": "to_host"
+          }
+        },
+        "required": [
+          "translator",
+          "project",
+          "output"
+        ]
+      },
+      "outputSchema": {
+        "type": "object"
+      },
+      "meta": {
+        "engine": "core",
+        "mutating": false,
+        "idempotent": true,
+        "preconditions": [],
+        "error_codes": [],
+        "tags": [
+          "project",
+          "translate"
+        ]
+      }
+    },
+    {
+      "name": "project.validate",
       "description": "Validate an OmniProject document and return every issue found.",
-      "input": {
+      "inputSchema": {
         "type": "object",
         "properties": {
           "project": {
@@ -37,499 +538,182 @@
           },
           "check_assets": {
             "type": "boolean",
-            "default": true,
-            "description": "Whether to check referenced assets exist."
+            "default": true
           }
         },
-        "required": ["project"]
+        "required": [
+          "project"
+        ]
       },
-      "output": {
-        "type": "object",
-        "description": "Project validation summary with issues."
+      "outputSchema": {
+        "type": "object"
       },
-      "error_codes": ["E_VALIDATION", "E_SCHEMA"],
-      "tags": ["project", "validation"]
+      "meta": {
+        "engine": "core",
+        "mutating": false,
+        "idempotent": true,
+        "preconditions": [],
+        "error_codes": [
+          "E_VALIDATION",
+          "E_SCHEMA"
+        ],
+        "tags": [
+          "project",
+          "validation"
+        ]
+      }
     },
-    "project.report": {
-      "type": "object",
-      "description": "Return a structured, agent-readable summary of a project timeline.",
-      "input": {
-        "type": "object",
-        "properties": {
-          "project": {
-            "type": "string",
-            "description": "Path to the project file."
-          }
-        },
-        "required": ["project"]
-      },
-      "output": {
-        "type": "object",
-        "description": "Structured timeline report."
-      },
-      "tags": ["project", "timeline"]
-    },
-    "project.translate": {
-      "type": "object",
-      "description": "Translate a project between the universal timeline and a host format.",
-      "input": {
-        "type": "object",
-        "properties": {
-          "translator": {
-            "type": "string",
-            "description": "e.g. fcpxml, edl, capcut_draft, ae_manifest"
-          },
-          "project": {
-            "type": "string",
-            "description": "Path to the project file."
-          },
-          "output": {
-            "type": "string",
-            "description": "Path for the output file."
-          },
-          "direction": {
-            "type": "string",
-            "enum": ["to_host", "to_universal"],
-            "default": "to_host",
-            "description": "Translation direction."
-          }
-        },
-        "required": ["translator", "project", "output"]
-      },
-      "output": {
-        "type": "object",
-        "description": "Translation result with output path and direction."
-      },
-      "tags": ["project", "translate"]
-    },
-    "engine.route": {
-      "type": "object",
-      "description": "Choose the best engine for a task given what is installed.",
-      "input": {
-        "type": "object",
-        "properties": {
-          "capability": {
-            "type": "string",
-            "default": null,
-            "description": "Target capability name, or null for auto-detect."
-          },
-          "preferred_engine": {
-            "type": "string",
-            "default": null,
-            "description": "Preferred engine name, if any."
-          },
-          "required_capabilities": {
-            "type": "array",
-            "items": {"type": "string"},
-            "default": [],
-            "description": "Required capability names."
-          },
-          "excluded_engines": {
-            "type": "array",
-            "items": {"type": "string"},
-            "default": [],
-            "description": "Engine names to exclude."
-          }
-        },
-        "required": []
-      },
-      "output": {
-        "type": "object",
-        "description": "Engine routing choice with selection reasoning."
-      },
-      "tags": ["planner"]
-    },
-    "checkpoint.save": {
-      "type": "object",
-      "description": "Snapshot a project so a destructive edit can be rolled back.",
-      "input": {
-        "type": "object",
-        "properties": {
-          "project": {
-            "type": "string",
-            "description": "Path to the project file."
-          },
-          "label": {
-            "type": "string",
-            "default": "auto",
-            "description": "Checkpoint label."
-          }
-        },
-        "required": ["project"]
-      },
-      "output": {
-        "type": "object",
-        "description": "Saved checkpoint ID and metadata."
-      },
-      "mutating": true,
-      "tags": ["checkpoint", "safety"]
-    },
-    "checkpoint.list": {
-      "type": "object",
-      "description": "List every stored checkpoint, newest first.",
-      "input": {"type": "object"},
-      "output": {
-        "type": "object",
-        "description": "List of checkpoint summaries."
-      },
-      "tags": ["checkpoint"]
-    },
-    "checkpoint.restore": {
-      "type": "object",
-      "description": "Restore a checkpoint back over a project file.",
-      "input": {
-        "type": "object",
-        "properties": {
-          "checkpoint_id": {
-            "type": "string",
-            "description": "ID of the checkpoint to restore."
-          },
-          "project": {
-            "type": "string",
-            "description": "Path to the project file."
-          }
-        },
-        "required": ["checkpoint_id", "project"]
-      },
-      "output": {
-        "type": "object",
-        "description": "Restore result with target path."
-      },
-      "mutating": true,
-      "tags": ["checkpoint", "rollback"]
-    },
-    "checkpoint.diff": {
-      "type": "object",
-      "description": "Diff two checkpoints and report the changes.",
-      "input": {
-        "type": "object",
-        "properties": {
-          "before": {
-            "type": "string",
-            "description": "ID of the first checkpoint."
-          },
-          "after": {
-            "type": "string",
-            "description": "ID of the second checkpoint."
-          }
-        },
-        "required": ["before", "after"]
-      },
-      "output": {
-        "type": "object",
-        "description": "Diff result showing changes between checkpoints."
-      },
-      "tags": ["checkpoint", "diff"]
-    },
-    "render.code_scene": {
-      "type": "object",
-      "description": "Render an HTML/CSS/JS scene frame-by-frame to PNG frames.",
-      "input": {
-        "type": "object",
-        "properties": {
-          "html": {
-            "type": "string",
-            "description": "HTML content for the scene."
-          },
-          "css": {
-            "type": "string",
-            "default": "",
-            "description": "CSS content for the scene."
-          },
-          "javascript": {
-            "type": "string",
-            "default": "",
-            "description": "JavaScript content for the scene."
-          },
-          "width": {
-            "type": "integer",
-            "default": 1920,
-            "description": "Render width in pixels."
-          },
-          "height": {
-            "type": "integer",
-            "default": 1080,
-            "description": "Render height in pixels."
-          },
-          "fps": {
-            "type": "number",
-            "default": 30.0,
-            "description": "Frames per second."
-          },
-          "duration_frames": {
-            "type": "integer",
-            "default": 60,
-            "description": "Number of frames to render."
-          },
-          "seed": {
-            "type": "integer",
-            "default": 0,
-            "description": "Seeded PRNG seed for determinism."
-          },
-          "transparent": {
-            "type": "boolean",
-            "default": false,
-            "description": "Whether the output should support transparency."
-          },
-          "output_dir": {
-            "type": "string",
-            "description": "Directory to write PNG frames to."
-          },
-          "resume": {
-            "type": "boolean",
-            "default": false,
-            "description": "Resume from existing frames."
-          }
-        },
-        "required": ["html", "output_dir"]
-      },
-      "output": {
-        "type": "object",
-        "description": "Render result with frame paths and metadata."
-      },
-      "error_codes": ["E_RENDER", "E_ENGINE_UNAVAILABLE", "E_DEPENDENCY_MISSING"],
-      "tags": ["render", "code"]
-    },
-    "render.cartoon_frames": {
-      "type": "object",
+    {
+      "name": "render.cartoon_frames",
       "description": "Render a 2D cartoon scene to a PNG frame sequence.",
-      "input": {
+      "inputSchema": {
         "type": "object",
         "properties": {
           "scene": {
             "type": "object",
-            "description": "CartoonSceneSpec shaped dict with layer/keyframe data."
+            "description": "CartoonSceneSpec shaped dict."
           },
           "fps": {
             "type": "number",
-            "default": 30.0,
-            "description": "Frames per second for the render."
+            "default": 30.0
           },
           "duration_frames": {
             "type": "integer",
-            "default": 60,
-            "description": "Number of frames to render."
+            "default": 60
           },
           "output_dir": {
-            "type": "string",
-            "description": "Directory to write PNG frames to."
+            "type": "string"
           },
           "resume": {
             "type": "boolean",
-            "default": false,
-            "description": "Resume from existing frames."
+            "default": false
           }
         },
-        "required": ["scene", "output_dir"]
+        "required": [
+          "scene",
+          "output_dir"
+        ]
       },
-      "output": {
-        "type": "object",
-        "description": "Render result with frame paths and count."
+      "outputSchema": {
+        "type": "object"
       },
-      "tags": ["render", "2d"]
+      "meta": {
+        "engine": "cartoon_2d",
+        "mutating": false,
+        "idempotent": true,
+        "preconditions": [],
+        "error_codes": [],
+        "tags": [
+          "render",
+          "2d"
+        ]
+      }
     },
-    "compose.video": {
-      "type": "object",
-      "description": "Assemble PNG frames into a video with FFmpeg.",
-      "input": {
+    {
+      "name": "render.code_scene",
+      "description": "Render an HTML/CSS/JS scene frame-by-frame to PNG frames.",
+      "inputSchema": {
         "type": "object",
         "properties": {
-          "frames": {
-            "type": "array",
-            "items": {"type": "string"},
-            "description": "Array of PNG frame file paths."
+          "html": {
+            "type": "string"
           },
-          "output": {
+          "css": {
             "type": "string",
-            "description": "Output video file path."
+            "default": ""
+          },
+          "javascript": {
+            "type": "string",
+            "default": ""
+          },
+          "width": {
+            "type": "integer",
+            "default": 1920
+          },
+          "height": {
+            "type": "integer",
+            "default": 1080
           },
           "fps": {
             "type": "number",
-            "default": 30.0,
-            "description": "Video frames per second."
+            "default": 30.0
           },
-          "preset": {
-            "type": "string",
-            "default": "h264",
-            "description": "Export preset name (h264, h265, prores, webm, gif, png_sequence, qtrle_alpha)."
-          }
-        },
-        "required": ["frames", "output"]
-      },
-      "output": {
-        "type": "object",
-        "description": "Compose result with output path."
-      },
-      "error_codes": ["E_RENDER", "E_ENGINE_UNAVAILABLE"],
-      "tags": ["compose", "export"]
-    },
-    "inspect.media": {
-      "type": "object",
-      "description": "Extract frames from a video and build a contact sheet for visual review.",
-      "input": {
-        "type": "object",
-        "properties": {
-          "video": {
-            "type": "string",
-            "description": "Path to the video file."
-          },
-          "output_dir": {
-            "type": "string",
-            "description": "Directory to write extracted frames to."
-          },
-          "count": {
+          "duration_frames": {
             "type": "integer",
-            "default": 12,
-            "description": "Number of frames to extract."
+            "default": 60
           },
-          "contact_sheet": {
-            "type": ["string", "null"],
-            "default": null,
-            "description": "Optional path for contact sheet image output."
-          }
-        },
-        "required": ["video", "output_dir"]
-      },
-      "output": {
-        "type": "object",
-        "description": "Inspection result with frame paths and optional contact sheet."
-      },
-      "tags": ["inspect", "vision"]
-    },
-    "inspect.frames": {
-      "type": "object",
-      "description": "Build a contact sheet / frame strip from an existing frame directory.",
-      "input": {
-        "type": "object",
-        "properties": {
-          "directory": {
-            "type": "string",
-            "description": "Directory containing PNG frame files."
-          },
-          "output": {
-            "type": "string",
-            "description": "Output path for the contact sheet or frame strip."
-          },
-          "columns": {
+          "seed": {
             "type": "integer",
-            "default": 4,
-            "description": "Number of columns in contact sheet grid."
+            "default": 0
           },
-          "strip": {
+          "transparent": {
             "type": "boolean",
-            "default": false,
-            "description": "Whether to produce a vertical frame strip instead of a grid."
-          }
-        },
-        "required": ["directory", "output"]
-      },
-      "output": {
-        "type": "object",
-        "description": "Inspection result with output path and frame count."
-      },
-      "tags": ["inspect", "vision"]
-    },
-    "bridge.list": {
-      "type": "object",
-      "description": "List every DCC bridge and its current availability.",
-      "input": {"type": "object"},
-      "output": {
-        "type": "object",
-        "description": "List of bridge names and their detection status."
-      },
-      "tags": ["bridge", "doctor"]
-    },
-    "bridge.detect": {
-      "type": "object",
-      "description": "Detect whether a host application is installed on this machine.",
-      "input": {
-        "type": "object",
-        "properties": {
-          "bridge": {
-            "type": "string",
-            "description": "Bridge name: premiere_pro, after_effects, davinci_resolve, capcut, or krita."
-          }
-        },
-        "required": ["bridge"]
-      },
-      "output": {
-        "type": "object",
-        "description": "Detection result indicating if the host app is available."
-      },
-      "tags": ["bridge", "doctor"]
-    },
-    "bridge.generate_script": {
-      "type": "object",
-      "description": "Generate a host script or project document for an OmniProject.",
-      "input": {
-        "type": "object",
-        "properties": {
-          "bridge": {
-            "type": "string",
-            "description": "Bridge name: premiere_pro, after_effects, davinci_resolve, capcut, or krita."
-          },
-          "project": {
-            "type": "string",
-            "description": "Path to the OmniProject file."
+            "default": false
           },
           "output_dir": {
-            "type": "string",
-            "description": "Directory to write the generated script/project to."
-          }
-        },
-        "required": ["bridge", "project", "output_dir"]
-      },
-      "output": {
-        "type": "object",
-        "description": "Script generation result with output path."
-      },
-      "tags": ["bridge", "automation"]
-    },
-    "bridge.inspect": {
-      "type": "object",
-      "description": "Read-only structural inspection of a host project file or folder.",
-      "input": {
-        "type": "object",
-        "properties": {
-          "bridge": {
-            "type": "string",
-            "description": "Bridge name: premiere_pro, after_effects, davinci_resolve, capcut, or krita."
+            "type": "string"
           },
-          "target": {
-            "type": "string",
-            "description": "Path to the project file or folder to inspect."
+          "resume": {
+            "type": "boolean",
+            "default": false
           }
         },
-        "required": ["bridge", "target"]
+        "required": [
+          "html",
+          "output_dir"
+        ]
       },
-      "output": {
-        "type": "object",
-        "description": "Inspection result with structural information."
+      "outputSchema": {
+        "type": "object"
       },
-      "tags": ["bridge", "rae", "inspect"]
+      "meta": {
+        "engine": "code_video",
+        "mutating": false,
+        "idempotent": true,
+        "preconditions": [],
+        "error_codes": [
+          "E_RENDER",
+          "E_ENGINE_UNAVAILABLE",
+          "E_DEPENDENCY_MISSING"
+        ],
+        "tags": [
+          "render",
+          "code"
+        ]
+      }
     },
-    "timeline.diff": {
-      "type": "object",
+    {
+      "name": "timeline.diff",
       "description": "Diff two project documents.",
-      "input": {
+      "inputSchema": {
         "type": "object",
         "properties": {
           "before": {
-            "type": "string",
-            "description": "Path to the first project file."
+            "type": "string"
           },
           "after": {
-            "type": "string",
-            "description": "Path to the second project file."
+            "type": "string"
           }
         },
-        "required": ["before", "after"]
+        "required": [
+          "before",
+          "after"
+        ]
       },
-      "output": {
-        "type": "object",
-        "description": "Diff result showing changes between the two projects."
+      "outputSchema": {
+        "type": "object"
       },
-      "tags": ["diff", "timeline"]
+      "meta": {
+        "engine": "core",
+        "mutating": false,
+        "idempotent": true,
+        "preconditions": [],
+        "error_codes": [],
+        "tags": [
+          "diff",
+          "timeline"
+        ]
+      }
     }
-  }
+  ]
 }

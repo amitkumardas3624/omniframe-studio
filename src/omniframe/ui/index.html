@@ -1,8 +1,54 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
+  <!--
+    OmniFrame Studio — Web UI (Phase 4, Task 4)
+    ===========================================
+
+    Offline policy: this page is a single self-contained HTML document with no
+    build step. Core layout, panels, tables, badges, buttons and form controls
+    are fully defined by the inline stylesheet below ("Offline fallback
+    styles"), so the UI renders usable and legible with the network blocked.
+    All data comes from same-origin relative endpoints on the server that
+    serves this file (/api/v1/..., /health, /ws/agent-activity).
+
+    Remaining external origins (complete inventory — tests/test_ui_a11y.py
+    asserts that this documented list is exactly equal to the origins actually
+    referenced by this document):
+
+    - https://cdn.tailwindcss.com — Tailwind Play CDN runtime. Progressive
+      enhancement ONLY: it supplies utility spacing/typography classes on a
+      few controls on top of the explicit rules in that stylesheet. Every utility name
+      this markup uses has an offline shim below, so layout and legibility are
+      unaffected when the CDN is unreachable.
+    - https://fonts.googleapis.com — Google Fonts stylesheet preconnect/link
+      for the "Inter" family. Progressive enhancement ONLY: the font stack
+      always ends in the system UI font, so text stays fully legible offline.
+    - https://fonts.gstatic.com — Google Fonts font-file origin (preconnect
+      plus the woff2 downloads the stylesheet above requests). Progressive
+      enhancement ONLY.
+
+    Blocking all three origins is safe and is exercised by tests/test_ui_a11y.py,
+    which loads /ui with every non-localhost request aborted and then asserts
+    that panels, badges, buttons and inputs still have their layout
+    (background/border/padding) and are reachable. Nothing here is required to
+    run the app: if you want a strictly zero-request page, delete the one
+    script tag and the three link tags below and rely on the inline CSS
+    alone.
+
+    CSP note: the page is one inline style block plus one inline script; it uses
+    no eval and no bundler. The markup does use onclick= attributes, so a
+    strict CSP needs 'unsafe-inline' (or a nonce/hash) for style-src and
+    script-src, and script-src-attr for those handlers. The three origins above
+    are the only ones a font/script directive would ever need to allow, and
+    none of them is required.
+
+    The <title> below is asserted verbatim by tests/test_ui_server.py and
+    tests/test_ui_a11y.py — change both if you change it.
+  -->
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="color-scheme" content="dark">
   <title>OmniFrame Studio — Agent & Creator Control Panel</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -282,23 +328,30 @@
     }
 
     .panel-header {
-      display: flex justify-content: space-between align-items:center;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 0.5rem;
       margin-bottom: 0.75rem;
       padding-bottom: 0.5rem;
       border-bottom: 1px solid var(--border);
     }
 
     .panel-title {
+      margin: 0;
       font-weight: 600;
       font-size: 0.875rem;
     }
 
+    /* Visible by default at reduced opacity so a keyboard user never
+       lands focus on an invisible control; full strength on hover/focus. */
     .panel-close {
-      opacity: 0;
+      opacity: 0.45;
       transition: opacity 0.15s;
     }
 
-    .panel:hover .panel-close {
+    .panel:hover .panel-close,
+    .panel-close:focus-visible {
       opacity: 1;
     }
 
@@ -406,7 +459,260 @@
       white-space: pre-wrap;
     }
 
-    /* Reduced motion */
+    /* Actions panel */
+    .action-item {
+      padding: 0.6rem 0;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .action-item:last-child {
+      border-bottom: none;
+    }
+
+    .action-name {
+      font-weight: 600;
+      color: var(--accent);
+      font-family: ui-monospace, SFMono-Regular, Consolas, monospace;
+    }
+
+    .action-desc {
+      margin: 0.25rem 0 0.25rem;
+      line-height: 1.4;
+    }
+
+    .action-schema-details summary {
+      cursor: pointer;
+      color: var(--muted);
+      font-size: 0.7rem;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+      user-select: none;
+    }
+
+    .action-schema-details summary:hover,
+    .action-schema-details summary:focus-visible {
+      color: var(--accent);
+      outline: none;
+    }
+
+    .actions-error-box {
+      padding: 0.75rem;
+      border: 1px solid rgba(255, 71, 87, 0.5);
+      background: rgba(255, 71, 87, 0.1);
+      color: var(--error);
+      border-radius: 6px;
+      font-size: 0.85rem;
+      line-height: 1.4;
+    }
+
+    /* Bridges capability list + Timeline clips */
+    .capability-list {
+      margin: 0.35rem 0 0;
+      padding-left: 1.1rem;
+      line-height: 1.5;
+      font-size: 0.78rem;
+    }
+
+    .timeline-clip {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      flex-wrap: wrap;
+      padding: 0.2rem 0;
+    }
+
+    /* ── Offline fallback styles ────────────────────────────────────────────
+       Everything below is plain CSS with no external dependency, so the page
+       stays usable and legible when cdn.tailwindcss.com / Google Fonts cannot
+       be reached. The Tailwind Play CDN and the Inter webfont are
+       progressive enhancement only (see the head comment). These rules also
+       shim every utility class name the markup uses, so blocking the CDN does
+       not change the layout: check them against the classes grep'd from this
+       file before adding a new one. */
+
+    body {
+      font-family: 'Inter', system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+      font-size: 0.95rem;
+      line-height: 1.5;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    /* Panels keep their own frame and readable contrast without Tailwind. */
+    .panel {
+      background: var(--card);
+      color: var(--fg);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 1rem;
+      max-width: 100%;
+      overflow-x: auto;
+      font-size: 0.85rem;
+      line-height: 1.5;
+    }
+
+    .panel-title {
+      color: var(--fg);
+    }
+
+    /* Tables (also used by the Timeline/Jobs/Actions renderers). */
+    .data-table {
+      width: 100%;
+      border-collapse: collapse;
+      table-layout: auto;
+      font-size: 0.8rem;
+    }
+
+    .data-table caption {
+      text-align: left;
+      color: var(--muted);
+      padding-bottom: 0.35rem;
+    }
+
+    .data-table th,
+    .data-table td {
+      text-align: left;
+      vertical-align: top;
+    }
+
+    /* Badges: explicit contrast so tier/status text is legible offline. */
+    .badge {
+      border: 1px solid transparent;
+      white-space: nowrap;
+      line-height: 1.2;
+    }
+
+    .badge-healthy { border-color: rgba(0, 212, 170, 0.35); }
+    .badge-warning { border-color: rgba(255, 165, 2, 0.35); }
+    .badge-critical { border-color: rgba(255, 71, 87, 0.35); }
+
+    /* Form controls. */
+    input,
+    select,
+    textarea,
+    button {
+      font: inherit;
+      color: var(--fg);
+      max-width: 100%;
+    }
+
+    label {
+      display: block;
+      font-size: 0.8rem;
+      color: var(--muted);
+      margin-bottom: 0.25rem;
+    }
+
+    input[type="text"],
+    input[type="file"],
+    select,
+    textarea {
+      display: block;
+      width: 100%;
+      padding: 0.4rem 0.55rem;
+      background: #0f1622;
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      color: var(--fg);
+    }
+
+    input[type="file"] {
+      padding: 0.35rem;
+      cursor: pointer;
+    }
+
+    select option {
+      background: #0f1622;
+      color: var(--fg);
+    }
+
+    button {
+      padding: 0.4rem 0.75rem;
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      color: var(--fg);
+      cursor: pointer;
+    }
+
+    button:hover { border-color: var(--muted); }
+
+    button:disabled {
+      opacity: 0.6;
+      cursor: wait;
+    }
+
+    /* Button variants used in the markup (.".btn-acent" is a pre-existing
+       typo in the dashboard panel and is kept as an alias so it still styles). */
+    .btn,
+    .btn-primary,
+    .btn-ghost,
+    .btn-acent {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 0.35rem;
+      padding: 0.4rem 0.75rem;
+      border-radius: 6px;
+      border: 1px solid var(--border);
+      background: var(--card);
+      color: var(--fg);
+      cursor: pointer;
+    }
+
+    .btn-primary,
+    .btn-acent {
+      background: var(--accent-dim);
+      border-color: var(--accent);
+      color: var(--accent);
+      font-weight: 600;
+    }
+
+    .btn-ghost {
+      background: transparent;
+      color: var(--muted);
+    }
+
+    .btn-ghost:hover {
+      color: var(--fg);
+      border-color: var(--muted);
+    }
+
+    /* Utility shims — exactly the Tailwind / helper class names this document
+       uses (grep 'class="' to re-verify). Blocking the CDN must not change
+       spacing or hide anything. */
+    .block { display: block; }
+    .hidden { display: none !important; }
+    .w-full { width: 100%; }
+    .rounded { border-radius: 6px; }
+    .border { border: 1px solid var(--border); }
+    .px-2 { padding-left: 0.5rem; padding-right: 0.5rem; }
+    .py-1 { padding-top: 0.25rem; padding-bottom: 0.25rem; }
+    .mb-1 { margin-bottom: 0.25rem; }
+    .mb-2 { margin-bottom: 0.5rem; }
+    .mt-1 { margin-top: 0.25rem; }
+    .mt-2 { margin-top: 0.5rem; }
+    .mt-4 { margin-top: 1rem; }
+
+    .text-sm { font-size: 0.8rem; }
+
+    /* #6b7a8c on #0a0e17 is only ~4.3:1; this lighter tone clears WCAG AA. */
+    .text-muted { color: #9aa9ba; }
+
+    /* The `hidden` attribute must win over the display rules above. */
+    [hidden] { display: none !important; }
+
+    /* Visible keyboard focus on every interactive control. */
+    a:focus-visible,
+    button:focus-visible,
+    input:focus-visible,
+    select:focus-visible,
+    textarea:focus-visible,
+    summary:focus-visible {
+      outline: 2px solid var(--accent);
+      outline-offset: 2px;
+    }
+
+
     @media (prefers-reduced-motion: reduce) {
       * {
         animation-duration: 0s !important;
@@ -420,7 +726,7 @@
     <!-- Header -->
     <header>
       <div class="logo">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true" focusable="false">
           <rect x="3" y="3" width="18" height="18" rx="2"/>
           <circle cx="8" cy="8" r="2"/>
           <circle cx="16" cy="16" r="2"/>
@@ -428,8 +734,8 @@
         </svg>
         <span class="title">OmniFrame Studio</span>
       </div>
-      <div class="status-indicator">
-        <div class="status-dot" id="status-dot"></div>
+      <div class="status-indicator" role="status" aria-live="polite">
+        <div class="status-dot" id="status-dot" aria-hidden="true"></div>
         <span class="text-sm text-muted" id="status-text">Initializing...</span>
       </div>
     </header>
@@ -446,12 +752,12 @@
     </section>
 
     <!-- Sidebar -->
-    <aside class="sidebar" id="sidebar">
+    <aside class="sidebar" id="sidebar" aria-label="Sidebar">
       <div class="sidebar-section">
-        <div class="section-title">Navigation</div>
-        <nav>
+        <div class="section-title" id="nav-heading">Navigation</div>
+        <nav aria-labelledby="nav-heading">
           <a href="#" class="nav-link active" data-panel="dashboard">
-            <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="current" stroke-width="1.5">
+            <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="current" stroke-width="1.5" aria-hidden="true" focusable="false">
               <path d="M3 12l8.5-8.5a1 1 0 0 1 1.41 0l-7 7a1 1 0 0 1-1.41-1.41z"/>
               <path d="M12 3v8l4 4"/>
             </svg>
@@ -459,7 +765,7 @@
           </a>
 
           <a href="#" class="nav-link" data-panel="projects">
-            <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="current" stroke-width="1.5">
+            <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="current" stroke-width="1.5" aria-hidden="true" focusable="false">
               <path d="M3 12l8.5-8.5a1 1 0 0 1 1.41 0l-7 7a1 1 0 0 1-1.41-1.41z"/>
               <path d="M19 21V5a2 2 0 0 0-2-2H7a2 2 0 0 0-2 2v4"/>
             </svg>
@@ -467,7 +773,7 @@
           </a>
 
           <a href="#" class="nav-link" data-panel="render">
-            <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="current" stroke-width="1.5">
+            <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="current" stroke-width="1.5" aria-hidden="true" focusable="false">
               <circle cx="12" cy="12" r="3"/>
               <path d="M2 12l20"/>
               <path d="M2 12l6.86-6.86"/>
@@ -476,7 +782,7 @@
           </a>
 
           <a href="#" class="nav-link" data-panel="bridges">
-            <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="current" stroke-width="1.5">
+            <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="current" stroke-width="1.5" aria-hidden="true" focusable="false">
               <rect x="3" y="3" width="18" height="18" rx="2"/>
               <circle cx="8" cy="8" r="2"/>
               <circle cx="16" cy="16" r="2"/>
@@ -485,28 +791,55 @@
           </a>
 
           <a href="#" class="nav-link" data-panel="inspection">
-            <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="current" stroke-width="1.5">
+            <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="current" stroke-width="1.5" aria-hidden="true" focusable="false">
               <polyline points="4 7 4 4 20 4 20 7"/>
               <line x1="9" y1="20" x2="15" y2="20"/>
               <line x1="12" y1="4" x2="12" y2="14"/>
             </svg>
             Inspection
           </a>
+
+          <a href="#" class="nav-link" data-panel="actions">
+            <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="current" stroke-width="1.5" aria-hidden="true" focusable="false">
+              <path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83"/>
+              <circle cx="12" cy="12" r="3"/>
+            </svg>
+            Actions
+          </a>
+
+          <a href="#" class="nav-link" data-panel="jobs">
+            <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="current" stroke-width="1.5" aria-hidden="true" focusable="false">
+              <rect x="3" y="4" width="18" height="16" rx="2"/>
+              <line x1="3" y1="9" x2="21" y2="9"/>
+              <line x1="9" y1="4" x2="9" y2="9"/>
+            </svg>
+            Jobs
+          </a>
+
+          <a href="#" class="nav-link" data-panel="timeline">
+            <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="current" stroke-width="1.5" aria-hidden="true" focusable="false">
+              <line x1="4" y1="12" x2="20" y2="12"/>
+              <rect x="5" y="9" width="3" height="6" rx="1"/>
+              <rect x="10" y="9" width="3" height="6" rx="1"/>
+              <rect x="15" y="9" width="3" height="6" rx="1"/>
+            </svg>
+            Timeline
+          </a>
         </nav>
       </div>
 
       <div class="sidebar-section">
-        <div class="section-title">Tools</div>
-        <nav id="tools-nav">
+        <div class="section-title" id="tools-heading">Tools</div>
+        <nav id="tools-nav" aria-labelledby="tools-heading">
           <!-- Populated by API -->
         </nav>
       </div>
     </aside>
 
     <!-- Main Content -->
-    <main class="main" id="main">
-      <section class="workspace-overview" id="workspace-overview">
-        <h1>OmniFrame Studio Workspace</h1>
+    <main class="main" id="main" aria-labelledby="workspace-title">
+      <section class="workspace-overview" id="workspace-overview" aria-labelledby="workspace-title">
+        <h1 id="workspace-title">OmniFrame Studio Workspace</h1>
         <p>Monitor the local agent runtime, inspect tools, and launch rendering workflows from one control surface.</p>
         <div class="overview-grid">
           <div class="overview-card"><strong id="overview-tools">19</strong><span>registered agent tools</span></div>
@@ -535,10 +868,10 @@
     </main>
 
     <!-- Panels (floating above main) -->
-    <div class="panel" id="dashboard-panel" style="position: fixed; right: 0; top: 64px; width: 400px; height: calc(100vh - 128px); overflow-y: auto;">
+    <section class="panel" id="dashboard-panel" aria-labelledby="dashboard-panel-title" style="position: fixed; right: 0; top: 64px; width: 400px; height: calc(100vh - 128px); overflow-y: auto;">
       <div class="panel-header">
-        <span class="panel-title">Dashboard</span>
-        <button class="panel-close" aria-label="Close panel">&times;</button>
+        <h2 class="panel-title" id="dashboard-panel-title">Dashboard</h2>
+        <button class="panel-close" type="button" aria-label="Close panel">&times;</button>
       </div>
       <div id="dashboard-content">
         <div style="color: var(--muted); font-size: 0.9rem;">
@@ -547,72 +880,114 @@
           <button class="btn btn-acent mt-2" type="button" onclick="runDoctor(this)">Run Doctor</button>
         </div>
       </div>
-    </div>
+    </section>
 
-    <div class="panel" id="projects-panel" style="position: fixed; right: 0; top: 64px; width: 400px; height: calc(100vh - 128px); overflow-y: auto; display: none;">
+    <section class="panel" id="projects-panel" aria-labelledby="projects-panel-title" style="position: fixed; right: 0; top: 64px; width: 400px; height: calc(100vh - 128px); overflow-y: auto; display: none;">
       <div class="panel-header">
-        <span class="panel-title">Projects</span>
-        <button class="panel-close" aria-label="Close panel">&times;</button>
+        <h2 class="panel-title" id="projects-panel-title">Projects</h2>
+        <button class="panel-close" type="button" aria-label="Close panel">&times;</button>
       </div>
       <div id="projects-content">
         <div class="main-empty" style="min-height: 200px;">Project list will appear here</div>
       </div>
-    </div>
+    </section>
 
-    <div class="panel" id="render-panel" style="position: fixed; right: 0; top: 64px; width: 400px; height: calc(100vh - 128px); overflow-y: auto; display: none;">
+    <section class="panel" id="render-panel" aria-labelledby="render-panel-title" style="position: fixed; right: 0; top: 64px; width: 400px; height: calc(100vh - 128px); overflow-y: auto; display: none;">
       <div class="panel-header">
-        <span class="panel-title">Render Control</span>
-        <button class="panel-close" aria-label="Close panel">&times;</button>
+        <h2 class="panel-title" id="render-panel-title">Render Control</h2>
+        <button class="panel-close" type="button" aria-label="Close panel">&times;</button>
       </div>
       <div id="render-content">
         <div class="mb-2">
-          <label class="text-sm text-muted block mb-1">Project file</label>
+          <label class="text-sm text-muted block mb-1" for="project-file">Project file</label>
           <input type="file" id="project-file" accept=".json,.jsonl" class="block w-full rounded border px-2 py-1 text-sm">
-          <button class="btn btn-primary mt-2" id="render-btn">Render to MP4</button>
+          <button class="btn btn-primary mt-2" id="render-btn" type="button">Render to MP4</button>
         </div>
         <div class="mt-4 text-sm text-muted" id="render-status">Ready</div>
       </div>
-    </div>
+    </section>
 
-    <div class="panel" id="bridges-panel" style="position: fixed; right: 0; top: 64px; width: 400px; height: calc(100vh - 128px); overflow-y: auto; display: none;">
+    <section class="panel" id="bridges-panel" aria-labelledby="bridges-panel-title" style="position: fixed; right: 0; top: 64px; width: 400px; height: calc(100vh - 128px); overflow-y: auto; display: none;">
       <div class="panel-header">
-        <span class="panel-title">DCC Bridges</span>
-        <button class="panel-close" aria-label="Close panel">&times;</button>
+        <h2 class="panel-title" id="bridges-panel-title">DCC Bridges</h2>
+        <button class="panel-close" type="button" aria-label="Close panel">&times;</button>
       </div>
       <div id="bridges-content">
         <div class="mb-2">
-          <button class="btn btn-ghost w-full mb-2" onclick="refreshBridges()">Refresh Status</button>
+          <button class="btn btn-ghost w-full mb-2" type="button" onclick="refreshBridges()">Refresh Status</button>
         </div>
-        <div id="bridges-list" class="data-table">
-          <thead>
-            <tr>
-              <th>Bridge</th>
-              <th>Status</th>
-              <th>Executable</th>
-            </tr>
-          </thead>
-          <tbody>
-            <!-- Populated by API -->
-          </tbody>
-        </div>
+        <div id="bridges-error" class="actions-error-box" role="alert" hidden></div>
+        <div id="bridges-list" class="text-sm text-muted" aria-live="polite">Loading bridge status...</div>
       </div>
-    </div>
+    </section>
 
-    <div class="panel" id="inspection-panel" style="position: fixed; right: 0; top: 64px; width: 400px; height: calc(100vh - 128px); overflow-y: auto; display: none;">
+    <section class="panel" id="inspection-panel" aria-labelledby="inspection-panel-title" style="position: fixed; right: 0; top: 64px; width: 400px; height: calc(100vh - 128px); overflow-y: auto; display: none;">
       <div class="panel-header">
-        <span class="panel-title">Inspection</span>
-        <button class="panel-close" aria-label="Close panel">&times;</button>
+        <h2 class="panel-title" id="inspection-panel-title">Inspection</h2>
+        <button class="panel-close" type="button" aria-label="Close panel">&times;</button>
       </div>
       <div id="inspection-content">
         <div class="mb-2">
-          <label class="text-sm text-muted block mb-1">Video file</label>
+          <label class="text-sm text-muted block mb-1" for="inspect-video">Video file</label>
           <input type="file" id="inspect-video" accept="video/*" class="block w-full rounded border px-2 py-1 text-sm">
-          <button class="btn btn-primary mt-2" onclick="runInspection()">Build Contact Sheet</button>
+          <button class="btn btn-primary mt-2" type="button" onclick="runInspection()">Build Contact Sheet</button>
         </div>
-        <div class="mt-4 text-sm text-muted" id="inspect-status">Ready</div>
+        <div class="mt-4 text-sm text-muted" id="inspect-status" role="status" aria-live="polite">Ready</div>
         <div id="contact-sheet" class="mt-4 hidden"></div>
       </div>
-    </div>
+    </section>
+
+    <section class="panel" id="actions-panel" aria-labelledby="actions-panel-title" style="position: fixed; right: 0; top: 64px; width: 400px; height: calc(100vh - 128px); overflow-y: auto; display: none;">
+      <div class="panel-header">
+        <h2 class="panel-title" id="actions-panel-title">Actions</h2>
+        <button class="panel-close" type="button" aria-label="Close panel">&times;</button>
+      </div>
+      <div id="actions-content">
+        <div id="actions-status" class="text-sm text-muted mb-2" role="status" hidden></div>
+        <div id="actions-error" class="actions-error-box" role="alert" hidden></div>
+        <div id="actions-list" class="text-sm text-muted" aria-live="polite">Loading runtime actions...</div>
+      </div>
+    </section>
+
+    <section class="panel" id="jobs-panel" aria-labelledby="jobs-panel-title" style="position: fixed; right: 0; top: 64px; width: 400px; height: calc(100vh - 128px); overflow-y: auto; display: none;">
+      <div class="panel-header">
+        <h2 class="panel-title" id="jobs-panel-title">Jobs</h2>
+        <button class="panel-close" type="button" aria-label="Close panel">&times;</button>
+      </div>
+      <div id="jobs-content">
+        <div id="jobs-error" class="actions-error-box" role="alert" hidden></div>
+        <div id="jobs-submit" class="mb-2">
+          <div class="mb-1">
+            <label class="text-sm text-muted block mb-1" for="job-kind">Job kind</label>
+            <select id="job-kind" class="block w-full rounded border px-2 py-1 text-sm">
+              <option value="validate">validate</option>
+              <option value="render">render</option>
+              <option value="compose">compose</option>
+              <option value="translate">translate</option>
+            </select>
+          </div>
+          <button class="tool-run" type="button" onclick="submitJob()">Submit Job</button>
+          <button class="btn btn-ghost mt-2" type="button" onclick="loadJobs()">Refresh</button>
+        </div>
+        <div id="jobs-list" class="text-sm text-muted" aria-live="polite">Loading jobs...</div>
+      </div>
+    </section>
+
+    <section class="panel" id="timeline-panel" aria-labelledby="timeline-panel-title" style="position: fixed; right: 0; top: 64px; width: 400px; height: calc(100vh - 128px); overflow-y: auto; display: none;">
+      <div class="panel-header">
+        <h2 class="panel-title" id="timeline-panel-title">Timeline</h2>
+        <button class="panel-close" type="button" aria-label="Close panel">&times;</button>
+      </div>
+      <div id="timeline-content">
+        <div id="timeline-error" class="actions-error-box" role="alert" hidden></div>
+        <div class="mb-2">
+          <label class="text-sm text-muted block mb-1" for="timeline-project-path">Project file path</label>
+          <input type="text" id="timeline-project-path" placeholder="/path/to/project.json" class="block w-full rounded border px-2 py-1 text-sm">
+          <button class="tool-run mt-2" type="button" onclick="loadTimeline()">Inspect Timeline</button>
+        </div>
+        <div id="timeline-list" class="text-sm text-muted" aria-live="polite">Enter a project file path to inspect its tracks and clips.</div>
+      </div>
+    </section>
   </div>
 
   <script>
@@ -626,9 +1001,12 @@
       bindNavigation();
       startConnectionMonitor();
       loadTools();
+      loadActions();
       runDoctor();
       checkForUpdates();
       renderDashboard();
+      loadJobs();
+      refreshBridges();
     });
 
     function setConnectionState(connected, detail = '') {
@@ -697,6 +1075,9 @@
           const panelId = `${link.dataset.panel}-panel`;
           showPanel(panelId);
           if (link.dataset.panel === 'bridges') refreshBridges();
+          if (link.dataset.panel === 'actions') loadActions();
+          if (link.dataset.panel === 'jobs') loadJobs();
+          if (link.dataset.panel === 'timeline') loadTimeline();
         });
       });
     }
@@ -728,6 +1109,53 @@
       } catch (error) {
         toolsNav.innerHTML = '<span class="text-muted">Tools unavailable</span>';
         console.error('Tools load failed:', error);
+      }
+    }
+
+    // Render the runtime action/tool manifest in the Actions panel.
+    function escapeHtml(value) {
+      return String(value).replace(/[&<>"']/g, (char) => {
+        const map = { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' };
+        return map[char];
+      });
+    }
+
+    async function loadActions() {
+      const listEl = document.getElementById('actions-list');
+      const errorEl = document.getElementById('actions-error');
+      const statusEl = document.getElementById('actions-status');
+      if (!listEl) return;
+      try {
+        const response = await fetch('/api/v1/tools', { cache: 'no-store' });
+        if (!response.ok) throw new Error(`tools request failed: ${response.status}`);
+        const payload = await response.json();
+        const tools = (payload.result && payload.result.tools) || [];
+        statusEl.hidden = false;
+        statusEl.textContent = `${tools.length} runtime action(s) loaded`;
+        errorEl.hidden = true;
+        if (!tools.length) {
+          listEl.innerHTML = '<div class="text-sm text-muted">No runtime actions available.</div>';
+          return;
+        }
+        listEl.innerHTML = tools.map((tool) => {
+          const schema = (tool.inputSchema || {});
+          return `
+          <div class="action-item">
+            <div class="action-name">${escapeHtml(tool.name)}</div>
+            <div class="action-desc text-sm text-muted">${escapeHtml(tool.description || 'No description provided.')}</div>
+            <details class="action-schema-details">
+              <summary>Schema</summary>
+              <pre class="tool-schema">${escapeHtml(JSON.stringify(schema, null, 2))}</pre>
+            </details>
+          </div>`;
+        }).join('');
+      } catch (error) {
+        console.error('Actions load failed:', error);
+        errorEl.hidden = false;
+        errorEl.textContent =
+          `Unable to load actions from /api/v1/tools. Make sure the OmniFrame server is running and reachable. (${error.message || error})`;
+        listEl.innerHTML = '';
+        statusEl.hidden = true;
       }
     }
 
@@ -871,7 +1299,90 @@
       document.getElementById('overview-chromium').textContent = byName.chromium?.available ? 'Available' : 'Missing';
     }
 
-    // Run doctor; the button argument is explicit so this also works on initial load.
+    // ── Phase 2 Jobs panel ─────────────────────────────────────────────────
+    function renderJobsUnavailable() {
+      const listEl = document.getElementById('jobs-list');
+      const errorEl = document.getElementById('jobs-error');
+      if (errorEl) {
+        errorEl.hidden = false;
+        errorEl.textContent = 'Jobs unavailable — the /api/v1/jobs endpoints are not enabled on this server build (the Phase 2 jobs package is missing).';
+      }
+      if (listEl) listEl.innerHTML = '';
+    }
+
+    async function loadJobs() {
+      const listEl = document.getElementById('jobs-list');
+      const submitEl = document.getElementById('jobs-submit');
+      const errorEl = document.getElementById('jobs-error');
+      if (!listEl) return;
+      errorEl.hidden = true;
+      try {
+        const response = await fetch('/api/v1/jobs', { cache: 'no-store' });
+        if (response.status === 404) {
+          // Route absent → jobs package not present on the server build.
+          renderJobsUnavailable();
+          return;
+        }
+        if (!response.ok) throw new Error(`jobs request failed: ${response.status}`);
+        const payload = await response.json();
+        const jobs = (payload.success && payload.result) || [];
+        if (submitEl) submitEl.hidden = false;
+        listEl.innerHTML = jobs.length
+          ? jobs.map((job) => {
+            const terminal = job.status === 'done' || job.status === 'failed' || job.status === 'canceled';
+            return `<div class="action-item">
+              <div class="action-name">${escapeHtml(job.kind || 'job')} · ${escapeHtml(job.id)}</div>
+              <div class="action-desc text-sm text-muted">
+                <span class="badge badge-${job.status === 'done' ? 'healthy' : (job.status === 'failed' || job.status === 'canceled' ? 'critical' : 'warning')}">${escapeHtml(job.status)}</span>
+                ${job.owner ? `<span class="text-sm text-muted"> · ${escapeHtml(job.owner)}</span>` : ''}
+              </div>
+              ${job.error ? `<div class="actions-error-box mt-1">${escapeHtml(job.error)}</div>` : ''}
+              ${!terminal ? `<button class="tool-run mt-1" type="button" onclick="cancelJob('${escapeHtml(job.id)}')">Cancel</button>` : ''}
+            </div>`;
+          }).join('')
+          : '<div class="text-sm text-muted">No jobs submitted yet.</div>';
+      } catch (error) {
+        console.error('Jobs load failed:', error);
+        renderJobsUnavailable();
+      }
+    }
+
+    async function submitJob() {
+      const kindSelect = document.getElementById('job-kind');
+      if (!kindSelect) return;
+      const kind = kindSelect.value;
+      const errorEl = document.getElementById('jobs-error');
+      if (errorEl) errorEl.hidden = true;
+      try {
+        const response = await fetch('/api/v1/jobs', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ kind, payload: {}, owner: 'web-ui' }),
+        });
+        if (response.status === 404) { renderJobsUnavailable(); return; }
+        if (!response.ok) throw new Error(`submit failed: ${response.status}`);
+        await loadJobs();
+      } catch (error) {
+        console.error('Job submit failed:', error);
+        if (errorEl) {
+          errorEl.hidden = false;
+          errorEl.textContent = `Job submission failed: ${error.message || error}`;
+        }
+      }
+    }
+
+    async function cancelJob(jobId) {
+      try {
+        const response = await fetch(`/api/v1/jobs/${encodeURIComponent(jobId)}/cancel`, { method: 'POST' });
+        if (response.status === 404) { renderJobsUnavailable(); return; }
+        if (!response.ok) throw new Error(`cancel failed: ${response.status}`);
+        await loadJobs();
+      } catch (error) {
+        console.error('Job cancel failed:', error);
+      }
+    }
+
+// Run doctor; the button argument is explicit so this also works on initial load.
     async function runDoctor(button = null) {
       const buttons = button ? [button] : Array.from(document.querySelectorAll('[onclick*="runDoctor"]'));
       buttons.forEach((item) => { item.disabled = true; item.textContent = 'Running...'; });
@@ -888,41 +1399,153 @@
       }
     }
 
-    // Refresh bridges
+    // Bridges panel
     async function refreshBridges() {
+      const listEl = document.getElementById('bridges-list');
+      const errorEl = document.getElementById('bridges-error');
+      if (listEl) listEl.innerHTML = '<span class="text-muted">Loading bridge status...</span>';
+      if (errorEl) errorEl.hidden = true;
       try {
-        const resp = await fetch('/api/v1/bridges', {method: 'GET', cache: 'no-store'});
+        const resp = await fetch('/api/v1/bridges', { method: 'GET', cache: 'no-store' });
+        if (!resp.ok) throw new Error(`bridges request failed: ${resp.status}`);
         const data = await resp.json();
+        if (!data.success) throw new Error(data.error || 'bridges endpoint returned an error');
         renderBridges(data.result || []);
       } catch (e) {
         console.error('Bridges fetch failed:', e);
+        if (listEl) listEl.innerHTML = '';
+        if (errorEl) {
+          errorEl.hidden = false;
+          errorEl.textContent = `Unable to load bridge status from /api/v1/bridges. (${e.message || e})`;
+        }
       }
     }
 
+    function tierBadgeClass(tier) {
+      if (tier === 'documented_api') return 'badge-healthy';
+      if (tier === 'ui_automation') return 'badge-critical';
+      return 'badge-warning'; // reverse_engineered / unknown
+    }
+
+    function tierLabel(tier) {
+      if (tier === 'documented_api') return 'Documented API';
+      if (tier === 'reverse_engineered') return 'Reverse-engineered';
+      if (tier === 'ui_automation') return 'UI automation';
+      return escapeHtml(tier || 'unknown');
+    }
+
     function renderBridges(bridges) {
-      const tbody = document.querySelector('#bridges-list tbody');
+      const listEl = document.getElementById('bridges-list');
+      if (!listEl) return;
       if (!bridges || bridges.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="3" class="text-muted">No bridges configured</td></tr>';
+        listEl.innerHTML = '<div class="text-muted">No bridges are configured on this server.</div>';
         return;
       }
-      
-      let html = '';
-      bridges.forEach(b => {
-        const statusClass = b.available ? 'badge-healthy' : 'badge-critical';
-        const statusText = b.available ? 'Available' : 'Not Found';
-        html += `<tr>
-          <td>${b.bridge_name}</td>
-          <td><span class="badge ${statusClass}">${statusText}</span></td>
-          <td>${b.executable_path || 'N/A'}</td>
-        </tr>`;
-      });
-      tbody.innerHTML = html;
+      listEl.innerHTML = bridges.map((bridge) => {
+        const installed = bridge.installed === true;
+        const scripting = bridge.scripting_api === true;
+        const statusBadge = installed
+          ? '<span class="badge badge-healthy">Installed</span>'
+          : '<span class="badge badge-critical">Not installed</span>';
+        const caps = Array.isArray(bridge.capabilities) ? bridge.capabilities : [];
+        const capsHtml = caps.length
+          ? `<ul class="capability-list">${caps.map((cap) =>
+              `<li>${escapeHtml(cap.name)} ` +
+              `<span class="badge ${tierBadgeClass(cap.tier)}">${tierLabel(cap.tier)}</span>` +
+              (cap.description ? `<div class="text-muted">${escapeHtml(cap.description)}</div>` : '') +
+              `</li>`).join('')}</ul>`
+          : '<div class="text-muted mt-1">No reported capabilities.</div>';
+        return `<div class="action-item">
+          <div class="action-name">${escapeHtml(bridge.id)}</div>
+          <div class="action-desc text-sm text-muted">${escapeHtml(bridge.host || '')}${bridge.version ? ` · v${escapeHtml(bridge.version)}` : ''}</div>
+          <div class="mt-1">${statusBadge} ${scripting ? '<span class="badge badge-healthy">Scripting API</span>' : ''}</div>
+          <div class="mt-1 text-sm text-muted">Capabilities</div>
+          ${capsHtml}
+        </div>`;
+      }).join('');
+    }
+
+    // Timeline panel
+    async function loadTimeline() {
+      const inputEl = document.getElementById('timeline-project-path');
+      const listEl = document.getElementById('timeline-list');
+      const errorEl = document.getElementById('timeline-error');
+      const projectPath = inputEl ? inputEl.value.trim() : '';
+      if (!listEl) return;
+      if (errorEl) errorEl.hidden = true;
+      if (!projectPath) {
+        listEl.innerHTML = '';
+        if (errorEl) {
+          errorEl.hidden = false;
+          errorEl.textContent = 'Enter the path to a project file on the server first.';
+        }
+        return;
+      }
+      listEl.innerHTML = 'Loading timeline...';
+      try {
+        const response = await fetch('/api/v1/projects/timeline', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ project_path: projectPath }),
+        });
+        const payload = await response.json();
+        if (!response.ok || !payload.success) {
+          throw new Error(payload.error || `timeline request failed: ${response.status}`);
+        }
+        renderTimeline(payload.result);
+      } catch (e) {
+        console.error('Timeline load failed:', e);
+        listEl.innerHTML = '';
+        if (errorEl) {
+          errorEl.hidden = false;
+          errorEl.textContent = `Unable to load timeline: ${e.message || e}`;
+        }
+      }
+    }
+
+    function renderTimeline(result) {
+      const listEl = document.getElementById('timeline-list');
+      if (!listEl) return;
+      const project = (result && result.project) || {};
+      const tracks = Array.isArray(project.tracks) ? project.tracks : [];
+      if (!tracks.length) {
+        listEl.innerHTML = '<div class="text-muted">The project has no tracks.</div>';
+        return;
+      }
+      const sortedTracks = tracks.slice().sort(
+        (a, b) => (a.index || 0) - (b.index || 0) || String(a.id || '').localeCompare(String(b.id || ''))
+      );
+      listEl.innerHTML = sortedTracks.map((track) => {
+        const clips = Array.isArray(track.clips) ? track.clips.slice().sort(
+          (a, b) => (a.start_frame || 0) - (b.start_frame || 0) || String(a.id || '').localeCompare(String(b.id || ''))
+        ) : [];
+        const clipsHtml = clips.length
+          ? clips.map((clip) => {
+            const start = clip.start_frame ?? 0;
+            const duration = clip.duration_frames ?? 0;
+            const frames = `${start}–${start + duration} (${duration}f)`;
+            const source = clip.source || clip.name || clip.id || '';
+            return `<div class="timeline-clip">
+              <span class="action-name">${escapeHtml(clip.kind || 'clip')}</span>
+              <span class="text-muted">${escapeHtml(source)}</span>
+              <span class="badge badge-warning">${escapeHtml(frames)}</span>
+            </div>`;
+          }).join('')
+          : '<div class="text-muted">No clips on this track.</div>';
+        return `<div class="action-item">
+          <div class="action-name">${escapeHtml(track.name || track.id)} <span class="badge badge-healthy">${escapeHtml(track.kind || 'track')}</span></div>
+          <div class="mt-1">${clipsHtml}</div>
+        </div>`;
+      }).join('');
     }
 
     // Initialize: check which panel to show
     const hash = window.location.hash;
     if (hash === '#bridges') showPanel('bridges-panel');
     else if (hash === '#render') showPanel('render-panel');
+    else if (hash === '#actions') showPanel('actions-panel');
+    else if (hash === '#jobs') { showPanel('jobs-panel'); loadJobs(); }
+    else if (hash === '#timeline') showPanel('timeline-panel');
     else showPanel('dashboard-panel'); // default
     
     function showPanel(panelId) {

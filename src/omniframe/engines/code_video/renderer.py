@@ -66,6 +66,18 @@ class RenderResult:
     backend: str = "unknown"
     duration_seconds: float = 0.0
     stream_output: str | None = None
+    #: Whether the underlying backend finished all frames without a fatal error.
+    completed: bool = True
+    #: How far along the render pipeline this result can claim to be.
+    #: One of ``generated | structurally_checked | import_tested | render_tested | production_candidate``.
+    verification_level: str = "generated"
+    #: Whether the resolved backend was functional when the render started.
+    backend_available: bool = False
+    #: Whether this run was resuming a previous checkpoint.
+    resume_requested: bool = False
+    #: Optional :class:`~omniframe.engines.compositor.golden.GoldenReport` dict
+    #: attached when a ``verify_against`` reference was supplied to ``render``.
+    golden: dict | None = None
 
     @property
     def errors(self) -> list[RenderIssue]:
@@ -91,6 +103,11 @@ class RenderResult:
             "duration_seconds": round(self.duration_seconds, 3),
             "stream_output": self.stream_output,
             "stream_mode": self.stream_output is not None,
+            "completed": self.completed,
+            "verification_level": self.verification_level,
+            "backend_available": self.backend_available,
+            "resume_requested": self.resume_requested,
+            "golden": self.golden,
             "issues": [issue.to_dict() for issue in self.issues],
             "error_count": len(self.errors),
         }
@@ -147,8 +164,15 @@ class CodeVideoRenderer:
         *,
         resume: bool = False,
         stream_to_ffmpeg: str | Path | None = None,
+        verify_against: str | Path | None = None,
     ) -> RenderResult:
-        """Render ``scene`` into PNGs or stream raw RGBA frames to FFmpeg."""
+        """Render ``scene`` into PNGs or stream raw RGBA frames to FFmpeg.
+
+        When ``verify_against`` is set and the render completes, the produced
+        frames in ``output_dir`` are checked against that golden reference
+        directory and the resulting :class:`GoldenReport` dict is attached to
+        the ``golden`` result field.
+        """
 
         if stream_to_ffmpeg is not None and resume:
             raise ValidationError(
@@ -209,6 +233,27 @@ class CodeVideoRenderer:
         if not completed:
             ok = False
 
+        golden: dict | None = None
+        if verify_against is not None and completed:
+            # Lazy import keeps the hash-only golden path Pillow-independent and
+            # avoids an import cycle between the code_video and compositor engines.
+            from ..compositor.golden import verify_frames
+
+            golden = verify_frames(verify_against, target_dir).to_dict()
+
+        backend_name = self.backend.name
+        try:
+            backend_available = self.backend.available()
+        except Exception:  # pragma: no cover - defensive
+            backend_available = False
+
+        if backend_name not in {"stub", "unknown"} and completed and ok:
+            verification_level = "render_tested"
+        elif backend_name == "stub":
+            verification_level = "import_tested"
+        else:
+            verification_level = "generated"
+
         result = RenderResult(
             frames=list(frames),
             frame_dir=target_dir,
@@ -218,9 +263,14 @@ class CodeVideoRenderer:
             height=scene.height,
             issues=issues,
             ok=ok,
-            backend=self.backend.name,
+            backend=backend_name,
             duration_seconds=elapsed,
             stream_output=str(stream_to_ffmpeg) if stream_to_ffmpeg is not None else None,
+            completed=completed,
+            verification_level=verification_level,
+            backend_available=backend_available,
+            resume_requested=bool(resume),
+            golden=golden,
         )
 
         if issues:

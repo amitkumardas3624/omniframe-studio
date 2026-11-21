@@ -47,6 +47,12 @@ class ValidationError(OmniFrameError):
     code = "E_VALIDATION"
 
 
+class PathSecurityError(OmniFrameError):
+    """A workspace path escaped its allowed root (traversal, drive change, symlink)."""
+
+    code = "E_PATH_SECURITY"
+
+
 class EngineUnavailable(OmniFrameError):
     """A required engine/backend is not installed or not usable on this host."""
 
@@ -57,6 +63,12 @@ class RenderError(OmniFrameError):
     """Frame rendering failed; details carry the offending scene + console log."""
 
     code = "E_RENDER"
+
+
+class RenderCanceled(RenderError):
+    """Rendering was canceled (by request or timed out) before or during work."""
+
+    code = "E_RENDER_CANCELED"
 
 
 class BridgeUnavailable(OmniFrameError):
@@ -99,3 +111,15 @@ class ActionError(OmniFrameError):
     """A registered action raised while executing."""
 
     code = "E_ACTION"
+
+
+class MigrationError(OmniFrameError):
+    """A schema migration could not be applied.
+
+    Raised for an unreadable/corrupt database, a stored version this build does
+    not know, or a database written by a newer OmniFrame than the one running.
+    The database is never deleted or recreated to recover: a corrupt file is
+    still user data.
+    """
+
+    code = "E_MIGRATION"

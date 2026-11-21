@@ -9,13 +9,13 @@ Install the UI-enabled package directly from GitHub. The installers check Python
 ### Linux/macOS
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/gbd718106-cmyk/omniframe-studio/master/install.sh | bash
+curl -fsSL https://raw.githubusercontent.com/amitkumardas3624/omniframe-studio/master/install.sh | bash
 ```
 
 ### Windows PowerShell
 
 ```powershell
-iwr https://raw.githubusercontent.com/gbd718106-cmyk/omniframe-studio/master/install.ps1 -UseBasicParsing | iex
+iwr https://raw.githubusercontent.com/amitkumardas3624/omniframe-studio/master/install.ps1 -UseBasicParsing | iex
 ```
 
 To install a fork or a different Git ref, set `OMNIFRAME_REPO_URL` before running the installer. For local development, use the editable install below instead of the online installer.

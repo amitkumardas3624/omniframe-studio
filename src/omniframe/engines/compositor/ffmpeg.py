@@ -5,13 +5,35 @@ from __future__ import annotations
 import json
 import shutil
 import subprocess
+import tempfile
+import threading
+import time
 from pathlib import Path
 from typing import Any, Iterable, Sequence
 
-from ...core.errors import EngineUnavailable, RenderError, ValidationError
+from ...core.errors import EngineUnavailable, RenderCanceled, RenderError, ValidationError
 from ...core.logging import get_logger
 
 LOG = get_logger("engines.compositor.ffmpeg")
+
+
+class CancelFlag:
+    """A thread-safe signal used to request early cancellation of a render.
+
+    Wraps a :class:`threading.Event` so it can be handed to :func:`run_ffmpeg`
+    and to render backends running in a different thread, letting an external
+    agent stop a long render without tearing down the process.
+    """
+
+    def __init__(self) -> None:
+        self._event = threading.Event()
+
+    def cancel(self) -> None:
+        self._event.set()
+
+    @property
+    def cancelled(self) -> bool:
+        return self._event.is_set()
 
 
 def ffmpeg_binary() -> str:
@@ -44,35 +66,95 @@ def ffmpeg_available() -> bool:
     return shutil.which("ffmpeg") is not None
 
 
-def run_ffmpeg(args: Sequence[str], *, timeout: float = 1800.0) -> str:
+def run_ffmpeg(
+    args: Sequence[str], *, timeout: float = 1800.0, cancel: CancelFlag | None = None
+) -> str:
     """Run ffmpeg with ``args`` and return its stderr.
 
-    Raises :class:`RenderError` with the tail of stderr when ffmpeg fails.
+    Unless ``cancel`` is already set, launches ffmpeg with :class:`subprocess.Popen`
+    and polls a short-interval loop until it exits, the ``timeout`` elapses, or
+    ``cancel.cancelled`` becomes ``True``.  stderr is redirected to a temporary
+    file so the child never blocks on a full pipe while we poll.
+
+    Raises :class:`RenderError` (with the tail of stderr) when ffmpeg fails or
+    times out, and :class:`RenderCanceled` when cancellation is signalled before
+    launch or during the run.
     """
+
+    if cancel is not None and cancel.cancelled:
+        raise RenderCanceled(
+            "ffmpeg canceled before launch.", argv=list(args)
+        )
 
     binary = ffmpeg_binary()
     argv = [binary, "-hide_banner", "-nostdin", "-y", *args]
     LOG.debug("ffmpeg", extra={"argv": " ".join(argv)})
+
+    deadline = time.monotonic() + timeout
+    tmp_stream = tempfile.TemporaryFile(mode="w+t", encoding="utf-8")
+    proc: subprocess.Popen[str] | None = None
     try:
-        proc = subprocess.run(  # noqa: S603
-            argv, capture_output=True, text=True, timeout=timeout, check=False
+        proc = subprocess.Popen(  # noqa: S603
+            argv,
+            stdout=subprocess.DEVNULL,
+            stderr=tmp_stream,
+            text=True,
         )
-    except subprocess.TimeoutExpired as exc:
-        raise RenderError(
-            f"ffmpeg timed out after {timeout:g}s.", argv=argv
-        ) from exc
     except OSError as exc:
+        tmp_stream.close()
         raise EngineUnavailable(f"ffmpeg could not be executed: {exc}", argv=argv) from exc
 
+    assert proc is not None
+    stderr: str
+    try:
+        while proc.poll() is None:
+            if cancel is not None and cancel.cancelled:
+                _terminate(proc, argv, timeout, canceled=True)
+            remaining = deadline - time.monotonic()
+            if remaining <= 0:
+                _terminate(proc, argv, timeout, canceled=False)
+            time.sleep(min(0.25, max(remaining, 0.0)))
+    except (RenderError, RenderCanceled):
+        raise
+    except OSError as exc:
+        raise EngineUnavailable(f"ffmpeg could not be executed: {exc}", argv=argv) from exc
+    finally:
+        proc.wait()
+        tmp_stream.flush()
+        tmp_stream.seek(0)
+        stderr = tmp_stream.read()
+        tmp_stream.close()
+
     if proc.returncode != 0:
-        tail = (proc.stderr or "").strip()[-1500:]
+        tail = (stderr or "").strip()[-1500:]
         raise RenderError(
             f"ffmpeg exited with code {proc.returncode}: {tail}",
             argv=argv,
             stderr=tail,
             returncode=proc.returncode,
         )
-    return proc.stderr or ""
+    return stderr or ""
+
+
+def _terminate(
+    proc: subprocess.Popen[str],
+    argv: list[str],
+    timeout: float,
+    *,
+    canceled: bool,
+) -> None:
+    """Kill ``proc`` and raise the appropriate error for a timeout/cancel."""
+    try:
+        proc.kill()
+    except OSError:  # pragma: no cover - already gone
+        pass
+    try:
+        proc.wait()
+    except OSError:  # pragma: no cover - already gone
+        pass
+    if canceled:
+        raise RenderCanceled("ffmpeg canceled during encoding.", argv=argv)
+    raise RenderError(f"ffmpeg timed out after {timeout:g}s.", argv=argv)
 
 
 def ffprobe_info(path: str | Path) -> dict[str, Any]:
@@ -314,6 +396,7 @@ def __getattr__(name: str):
 
 
 __all__ = [
+    "CancelFlag",
     "RawVideoStream",
     "build_video_from_frames",
     "escape_filter_path",

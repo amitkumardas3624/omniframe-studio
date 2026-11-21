@@ -1,6 +1,6 @@
 """OmniFrame Studio Backend API — FastAPI server.
 
-Provides REST endpoints for all 18+ agent actions, WebSocket/SSE agent activity
+Provides REST endpoints for the registered agent actions, WebSocket/SSE agent activity
 streaming, MCP server integration, and Web UI support.
 
 Run with:
@@ -17,6 +17,7 @@ import logging
 import os
 import subprocess
 import sys
+import tempfile
 import uuid
 from concurrent import futures
 from contextlib import asynccontextmanager
@@ -96,6 +97,12 @@ class ProjectValidate(BaseModel):
 class CheckpointSave(BaseModel):
     project_path: str = Field(..., description="Path to project file")
     label: str = "auto"
+
+
+class JobSubmit(BaseModel):
+    kind: str = Field(..., description="Phase 2 job kind (render/compose/translate/validate)")
+    payload: dict[str, Any] = Field(default_factory=dict, description="Job parameters")
+    owner: str | None = Field(default=None, description="Optional job owner label")
 
 
 # ── Lifespan: initialize registry ────────────────────────────────────────
@@ -222,6 +229,29 @@ def create_app() -> FastAPI:
                 error_code="E_RENDER",
             )
 
+    @app.post("/api/v1/projects/timeline")
+    async def project_timeline(payload: ProjectLoad) -> ActionOutput:
+        """Return the loaded OmniProject document for inspector UI.
+
+        Additive, read-only endpoint powering the phase-4 Timeline panel. It
+        surfaces the same ``omniframe.core.timeline_schema.io.load_project``
+        result the CLI/validate path uses, so the UI can render sorted tracks
+        and clips (kind, source, frames) without importing backend functions in
+        the browser. No proprietary host or external pipeline is involved.
+        """
+        try:
+            project = load_project(payload.project_path)
+            return ActionOutput(
+                success=True,
+                result={
+                    "project_path": payload.project_path,
+                    "project": project.model_dump(mode="json"),
+                },
+            )
+        except Exception as e:
+            LOG.exception("Error loading project timeline %s", payload.project_path)
+            return ActionOutput(success=False, error=str(e), error_code="E_PROJECT_LOAD")
+
     # ── Bridge operations ───────────────────────────────────────────────────
 
     @app.get("/api/v1/bridges")
@@ -303,6 +333,94 @@ def create_app() -> FastAPI:
         """Return safe instructions for reloading the updated process."""
         return ActionOutput(success=True, result=restart_instructions())
 
+    # ── Phase 2 job queue (only when the jobs package is importable) ────────
+    #
+    # JobManager/JobStore are imported here (not at module top) so server.py
+    # stays importable without Phase 2. The routes below are registered only
+    # when the import succeeds; a build lacking the jobs package exposes no
+    # /api/v1/jobs* endpoints, and the UI degrades to a "jobs unavailable"
+    # message instead of erroring.
+    try:
+        from omniframe.jobs import JobManager, JobStore
+    except ImportError:
+        JobManager = None  # type: ignore[assignment]
+        JobStore = None  # type: ignore[assignment]
+
+    if JobManager is not None:
+        # Per-app lazily-created manager. Store is SQLite file-backed under a
+        # fresh temp dir so operations persist across submit/status/cancel
+        # calls (the store opens a new connection per operation, so a pure
+        # :memory: db would not survive between calls). Re-created only if the
+        # temp dir is somehow removed; Phase 2 store is per-manager, which we
+        # mirror.
+        _job_holder: list[dict[str, Any]] = [{}]
+
+        def _get_job_manager() -> JobManager:
+            if "manager" not in _job_holder[0]:
+                db_dir = tempfile.mkdtemp(prefix="omniframe-jobs-")
+                store = JobStore(db_path=os.path.join(db_dir, "jobs.db"))
+                _job_holder[0]["manager"] = JobManager(store)
+            return _job_holder[0]["manager"]  # type: ignore[return-value]
+
+        @app.get("/api/v1/jobs")
+        async def list_jobs() -> ActionOutput:
+            """Return the Phase 2 job queue (oldest first)."""
+            try:
+                manager = _get_job_manager()
+                jobs = manager._store.list_jobs()
+                return ActionOutput(success=True, result=jobs)
+            except Exception as e:
+                LOG.exception("Error listing jobs")
+                return ActionOutput(success=False, error=str(e), error_code="E_JOBS")
+
+        @app.get("/api/v1/jobs/{job_id}")
+        async def job_status(job_id: str) -> ActionOutput:
+            """Return a single job record for polling."""
+            try:
+                manager = _get_job_manager()
+                job = manager.status(job_id)
+                if job is None:
+                    return ActionOutput(
+                        success=False,
+                        error=f"job {job_id!r} not found",
+                        error_code="E_JOB_NOT_FOUND",
+                    )
+                return ActionOutput(success=True, result=job)
+            except Exception as e:
+                LOG.exception("Error reading job %s", job_id)
+                return ActionOutput(success=False, error=str(e), error_code="E_JOBS")
+
+        @app.post("/api/v1/jobs")
+        async def submit_job(payload: JobSubmit) -> ActionOutput:
+            """Submit a new Phase 2 job and return its job_id immediately."""
+            try:
+                manager = _get_job_manager()
+                job_id = manager.submit(payload.kind, payload.payload, owner=payload.owner)
+                return ActionOutput(
+                    success=True,
+                    result={"job_id": job_id, "kind": payload.kind, "owner": payload.owner},
+                )
+            except Exception as e:
+                LOG.exception("Error submitting job")
+                return ActionOutput(success=False, error=str(e), error_code="E_JOBS")
+
+        @app.post("/api/v1/jobs/{job_id}/cancel")
+        async def cancel_job(job_id: str) -> ActionOutput:
+            """Cancel a queued/running Phase 2 job."""
+            try:
+                manager = _get_job_manager()
+                job = manager.cancel(job_id)
+                if job is None:
+                    return ActionOutput(
+                        success=False,
+                        error=f"job {job_id!r} not found",
+                        error_code="E_JOB_NOT_FOUND",
+                    )
+                return ActionOutput(success=True, result=job)
+            except Exception as e:
+                LOG.exception("Error canceling job %s", job_id)
+                return ActionOutput(success=False, error=str(e), error_code="E_JOBS")
+
     # ── WebSocket for agent activity stream ──────────────────────────────────
 
     @app.websocket("/ws/agent-activity")
@@ -334,7 +452,7 @@ def create_app() -> FastAPI:
     # ── MCP endpoint stub ───────────────────────────────────────────────────
 
     @app.post("/api/v1/mcp/call", response_model=ActionOutput)
-    async def mcp_call(payload: Dict[str, Any]) -> ActionOutput:
+    async def mcp_call(payload: dict[str, Any]) -> ActionOutput:
         """MCP (Model Context Protocol) tool call endpoint."""
         action = payload.get("name", "")
         parameters = payload.get("parameters", {})
@@ -353,7 +471,7 @@ def create_app() -> FastAPI:
             return HTMLResponse(content=content)
         return HTMLResponse(
             content="<h1>OmniFrame Studio UI</h1>"
-            "<p>Web UI not yet built. See https://github.com/omniframe-studio/omniframe-studio</p>",
+            "<p>Web UI not yet built. See https://github.com/amitkumardas3624/omniframe-studio</p>",
             status_code=200,
         )
 

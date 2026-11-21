@@ -92,7 +92,7 @@ Bidirectional translators between OmniProject and host formats: FCPXML, EDL, Cap
 | Command | Description |
 |---------|-------------|
 | `doctor` | Report environment status |
-| `tools --list` | List all 18 registered actions |
+| `tools --list` | List the current generated tool manifest |
 | `project init <name>` | Initialize new project |
 | `project validate <file>` | Validate OmniProject |
 | `project render <file> --out <dir>` | Render to PNG frames |

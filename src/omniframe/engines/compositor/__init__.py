@@ -9,6 +9,7 @@ burns subtitles, applies LUTs and produces the final delivery files.
 
 from __future__ import annotations
 
+from .artifact import write_artifact_manifest
 from .audio import AudioTrack, SubtitleTrack, mix_audio
 from .compositor import Compositor
 from .ffmpeg import (
@@ -34,5 +35,6 @@ __all__ = [
     "list_presets",
     "mix_audio",
     "run_ffmpeg",
+    "write_artifact_manifest",
     "write_concat_list",
 ]

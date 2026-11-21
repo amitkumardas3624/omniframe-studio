@@ -9,6 +9,7 @@ from typing import Any, Iterable, Sequence
 
 from ...core.errors import ValidationError
 from ...core.logging import get_logger
+from .artifact import write_artifact_manifest
 from .audio import AudioTrack, SubtitleTrack, mix_audio
 from .ffmpeg import (
     build_video_from_frames,
@@ -42,6 +43,34 @@ class Compositor:
         target.parent.mkdir(parents=True, exist_ok=True)
         return target
 
+    def _emit_manifest(
+        self,
+        output: str | Path,
+        *,
+        tool: str,
+        preset: str | None = None,
+        extra_inputs: Sequence[str | Path] = (),
+    ) -> None:
+        """Write a per-delivery artifact manifest next to ``output``.
+
+        Only regular-file outputs receive a manifest: directory deliveries
+        (such as a ``png_sequence`` frame set) have no single artifact to hash
+        and are skipped so existing behaviour is preserved.
+        """
+        target = Path(output)
+        if not target.is_file():
+            LOG.info(
+                "skipping artifact manifest: output is not a file",
+                extra={"tool": tool, "output": str(target)},
+            )
+            return
+        write_artifact_manifest(
+            target,
+            tool=tool,
+            preset=preset,
+            extra_inputs=extra_inputs,
+        )
+
     # -- video ----------------------------------------------------------
     def frames_to_video(
         self,
@@ -64,9 +93,16 @@ class Compositor:
         target = self._target(output)
 
         if chosen.name == "png_sequence":
-            return self._png_sequence(frames, target, fps=fps)
+            result = self._png_sequence(frames, target, fps=fps)
+            self._emit_manifest(
+                target,
+                tool="frames_to_video",
+                preset=chosen.name,
+                extra_inputs=frames,
+            )
+            return result
 
-        return build_video_from_frames(
+        result = build_video_from_frames(
             frames,
             target,
             fps=fps,
@@ -78,6 +114,13 @@ class Compositor:
             background=background,
             transparent=transparent or chosen.supports_transparency and transparent,
         )
+        self._emit_manifest(
+            target,
+            tool="frames_to_video",
+            preset=chosen.name,
+            extra_inputs=frames,
+        )
+        return result
 
     def raw_frames_to_video(
         self,
@@ -169,6 +212,12 @@ class Compositor:
             run_ffmpeg(args)
         finally:
             shutil.rmtree(tmp_dir, ignore_errors=True)
+        self._emit_manifest(
+            target,
+            tool="concat_videos",
+            preset=chosen.name,
+            extra_inputs=list(videos),
+        )
         return target
 
     # -- audio ----------------------------------------------------------
@@ -182,7 +231,14 @@ class Compositor:
     ) -> Path:
         """Mix audio tracks into a WAV intermediate."""
 
-        return mix_audio(tracks, output, fps=fps, duration=duration)
+        result = mix_audio(tracks, output, fps=fps, duration=duration)
+        self._emit_manifest(
+            result,
+            tool="mix_audio",
+            preset=None,
+            extra_inputs=[track.path for track in tracks],
+        )
+        return result
 
     def mux_audio(
         self,
@@ -217,6 +273,12 @@ class Compositor:
             args += list(chosen.extra_args)
         args += ["-shortest", str(target)]
         run_ffmpeg(args)
+        self._emit_manifest(
+            target,
+            tool="mux_audio",
+            preset=chosen.name,
+            extra_inputs=(video, audio),
+        )
         return target
 
     def extract_audio(self, video: str | Path, output: str | Path) -> Path:
@@ -224,6 +286,7 @@ class Compositor:
 
         target = self._target(output)
         run_ffmpeg(["-i", str(video), "-vn", "-c:a", "pcm_s16le", str(target)])
+        self._emit_manifest(target, tool="extract_audio", preset=None, extra_inputs=(video,))
         return target
 
     # -- subtitles ------------------------------------------------------
@@ -254,6 +317,12 @@ class Compositor:
         args += list(chosen.extra_args)
         args += [str(target)]
         run_ffmpeg(args)
+        self._emit_manifest(
+            target,
+            tool="burn_subtitles",
+            preset=chosen.name,
+            extra_inputs=(video, subtitle),
+        )
         return target
 
     def export_subtitles(self, subtitle: str | Path, output: str | Path) -> Path:
@@ -294,6 +363,12 @@ class Compositor:
         args += list(chosen.extra_args)
         args += [str(target)]
         run_ffmpeg(args)
+        self._emit_manifest(
+            target,
+            tool="apply_lut",
+            preset=chosen.name,
+            extra_inputs=(video, lut_path),
+        )
         return target
 
     def scale_video(
@@ -319,6 +394,12 @@ class Compositor:
         args += list(chosen.extra_args)
         args += [str(target)]
         run_ffmpeg(args)
+        self._emit_manifest(
+            target,
+            tool="scale_video",
+            preset=chosen.name,
+            extra_inputs=(video,),
+        )
         return target
 
     # -- project --------------------------------------------------------
@@ -391,6 +472,17 @@ class Compositor:
             shutil.rmtree(tmp_dir, ignore_errors=True)
 
         LOG.info("project rendered", extra={"output": str(target)})
+        project_inputs: list[str | Path] = list(media)
+        if audio_tracks:
+            project_inputs += [track.path for track in audio_tracks]
+        if subtitle_tracks:
+            project_inputs += [track.path for track in subtitle_tracks]
+        self._emit_manifest(
+            target,
+            tool="render_project",
+            preset=preset,
+            extra_inputs=project_inputs,
+        )
         return target
 
     # -- internals ------------------------------------------------------

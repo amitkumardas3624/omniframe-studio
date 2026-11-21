@@ -14,4 +14,4 @@ omniframe inspect media --video out/video.mp4 --output-dir out/inspect --contact
 omniframe mcp
 ```
 
-Before mutating project state, use `omniframe checkpoint save <project.json> --label before-edit`. Use structured JSON output and stable error codes for agent branching. For MCP client configuration and the full 18-action registry, read the root `README.md` and `src/omniframe/agent/AGENT_GUIDE.md`.
+Before mutating project state, use `omniframe checkpoint save <project.json> --label before-edit`. Use structured JSON output and stable error codes for agent branching. For the current action registry, run `omniframe tools --list` or inspect `src/omniframe/agent/schemas/tools.json`.

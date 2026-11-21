@@ -1,0 +1,101 @@
+name: CI
+
+on:
+  push:
+    branches: [main, master]
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ["3.10", "3.11", "3.12"]
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+
+      - name: Install project and dev dependencies
+        run: python -m pip install -e ".[dev]"
+
+      - name: Byte-compile sources
+        run: python -m compileall -q src
+
+      - name: Run test suite
+        run: python -m pytest -q
+
+      - name: Lint sources and tests
+        run: python -m ruff check src tests
+
+  # Install matrix: the core platform must be importable with *no* extras, and
+  # the documented development surface with [dev]. No DCC host is invoked here.
+  install:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ["3.10", "3.11", "3.12"]
+        extras: ["", "[dev]"]
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+
+      - name: Upgrade packaging tooling
+        run: python -m pip install --upgrade pip setuptools wheel
+
+      - name: 'Install project (extras: "${{ matrix.extras }}")'
+        run: python -m pip install -e ".${{ matrix.extras }}"
+
+      - name: Import the package
+        run: python -c "import omniframe; print('OMNIFRAME_IMPORT_OK', omniframe.__version__)"
+
+      - name: Console script responds to --help
+        run: omniframe --help
+
+  # Release artifacts: build a wheel and prove the declared package-data
+  # (typing marker + agent schemas) really lands inside it.
+  wheel:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.12
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Upgrade packaging tooling
+        run: python -m pip install --upgrade pip setuptools wheel
+
+      - name: Build wheel
+        run: python -m pip wheel . --no-deps -w dist
+
+      - name: Verify the wheel ships typing marker and agent schemas
+        run: |
+          python - <<'PY'
+          import pathlib
+          import zipfile
+
+          wheels = sorted(pathlib.Path("dist").glob("*.whl"))
+          assert wheels, "no wheel was built"
+          names = zipfile.ZipFile(wheels[0]).namelist()
+          assert any(n.endswith("omniframe/py.typed") for n in names), "py.typed missing"
+          assert any("agent/schemas/" in n and n.endswith(".json") for n in names), "schemas missing"
+          print("WHEEL_OK", wheels[0].name, len(names))
+          PY

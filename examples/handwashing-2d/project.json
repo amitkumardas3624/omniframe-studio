@@ -1,0 +1,52 @@
+{
+  "schema_version": "1.0",
+  "meta": {
+    "name": "handwashing-bengali-2d",
+    "version": "1.0",
+    "fps": 30,
+    "width": 1920,
+    "height": 1080,
+    "duration_frames": 300,
+    "color_space": "Rec.709",
+    "audio_sample_rate": 48000,
+    "audio_channels": 2,
+    "background": "#FFF7E8"
+  },
+  "tracks": [
+    {
+      "id": "animation-main",
+      "name": "Handwashing 2D scenes",
+      "kind": "2d_animation",
+      "index": 0,
+      "clips": [
+        {"id": "problem", "name": "Problem", "kind": "cartoon_layer", "start_frame": 0, "duration_frames": 60, "cartoon": {"width": 1920, "height": 1080, "background": "#FFF7E8", "layers": [{"id": "child", "kind": "vector", "color": "#4B77BEFF", "z": 2}, {"id": "germs", "kind": "vector", "color": "#7BC96FFF", "z": 4}]}},
+        {"id": "steps", "name": "Three steps", "kind": "cartoon_layer", "start_frame": 60, "duration_frames": 90, "cartoon": {"width": 1920, "height": 1080, "background": "#E8F7FF", "layers": [{"id": "teacher", "kind": "vector", "color": "#E6A17EFF", "z": 2}, {"id": "cards", "kind": "solid", "color": "#FFFFFF" , "z": 3}]}},
+        {"id": "handwash", "name": "Wash action", "kind": "cartoon_layer", "start_frame": 150, "duration_frames": 90, "cartoon": {"width": 1920, "height": 1080, "background": "#DDF6FF", "layers": [{"id": "faucet", "kind": "solid", "color": "#7CA9C9FF", "z": 2}, {"id": "bubbles", "kind": "vector", "color": "#FFFFFFCC", "z": 5}]}},
+        {"id": "reminder", "name": "Healthy reminder", "kind": "cartoon_layer", "start_frame": 240, "duration_frames": 60, "cartoon": {"width": 1920, "height": 1080, "background": "#FFF1D6", "layers": [{"id": "characters", "kind": "vector", "color": "#F3B562FF", "z": 2}, {"id": "sparkle", "kind": "vector", "color": "#FFD166FF", "z": 5}]}}
+      ]
+    },
+    {
+      "id": "audio-main",
+      "name": "Original audio",
+      "kind": "audio",
+      "index": 1,
+      "clips": [{"id": "bed", "name": "Original procedural bed", "kind": "audio", "start_frame": 0, "duration_frames": 300, "source": "output/handwashing-bed.wav", "audio": {"source": "output/handwashing-bed.wav", "volume": 0.7, "fade_in_frames": 12, "fade_out_frames": 30, "normalization": "peak"}}]
+    },
+    {
+      "id": "subtitle-main",
+      "name": "Bengali captions",
+      "kind": "subtitle",
+      "index": 2,
+      "clips": [{"id": "captions", "name": "Bengali educational captions", "kind": "subtitle", "start_frame": 0, "duration_frames": 300, "source": "captions.srt", "metadata": {"format": "srt"}}]
+    }
+  ],
+  "shots": [
+    {"id": "shot-problem", "name": "Problem", "index": 0, "start_frame": 0, "end_frame": 60, "description": "Child reaches for snack and germs appear", "engine": "cartoon_2d"},
+    {"id": "shot-steps", "name": "Three steps", "index": 1, "start_frame": 60, "end_frame": 150, "description": "Teacher reveals water, soap and timer", "engine": "cartoon_2d"},
+    {"id": "shot-handwash", "name": "Wash action", "index": 2, "start_frame": 150, "end_frame": 240, "description": "Child washes hands with bubbles and timer", "engine": "cartoon_2d"},
+    {"id": "shot-reminder", "name": "Reminder", "index": 3, "start_frame": 240, "end_frame": 300, "description": "Characters smile with healthy reminder", "engine": "cartoon_2d"}
+  ],
+  "assets": [],
+  "render_targets": [{"id": "main", "name": "Handwashing delivery", "container": "mp4", "video_codec": "libx264", "audio_codec": "aac", "width": 1920, "height": 1080, "fps": 30, "path": "output/handwashing-2d.mp4", "preset": "medium"}],
+  "metadata": {"language": "bn", "rights": "original procedural demo", "reference_policy": "no real-person likeness or copied style"}
+}

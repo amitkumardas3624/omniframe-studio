@@ -15,7 +15,7 @@ All platform capabilities are exposed through the Typer CLI and can be invoked p
 
 #### Environment & Doctor
 - `omniframe doctor` — Report environment status (Python, Node, FFmpeg, Chromium, native accelerator, host app detection)
-- `omniframe tools --list` — List all 18 registered actions with JSON Schema contracts
+- `omniframe tools --list` — List the current generated tool manifest with JSON Schema contracts
 
 #### Project Lifecycle
 - `omniframe project validate <project.json>` — Validate an OmniProject document
@@ -65,7 +65,7 @@ mcp__omniframe call_tool <tool_name> <arguments_json>
 
 ## Action Registry
 
-All 18 built-in actions are registered in `core.agent_runtime.actions.register_builtin_actions()`. Each action has:
+All built-in actions are registered in `core.agent_runtime.actions.register_builtin_actions()`. Each action has:
 
 - **JSON Schema input/output contracts**
 - **Error code mappings** (E_RENDER, E_BRIDGE_UNAVAILABLE, E_SCHEMA, E_VALIDATION, etc.)
@@ -100,7 +100,7 @@ All 18 built-in actions are registered in `core.agent_runtime.actions.register_b
 - **CSS animation freeze** at render time
 - **Double-rAF settle** before frame capture
 - **`__OMNIFRAME_READY__`** opt-in for signaling render completion
-- **Per-frame seed** support in code_scene and cartoon_frames actions
+- **Per-frame seed** support in the `render.code_scene` action
 
 ## Error Model
 Structured `OmniFrameError` hierarchy with stable `code` field for agent branching:
@@ -121,7 +121,7 @@ Structured `OmniFrameError` hierarchy with stable `code` field for agent branchi
 - **Dependencies**: `pydantic>=2.6,<3`, `PyYAML>=6.0`, `typer>=0.12`, `Pillow>=10.2`
 - **Optional**: `playwright>=1.44` (for `[render]` extra), `pybind11>=2.11` (for `[native]` extra and CMake C++17 build)
 - **Fallback policy**: missing compiler, pybind11, or `_omniframe_native` selects the Python implementation automatically
-- **Testing**: `pytest>=8.0` with 128 tests; `@pytest.mark.render` for browser tests, `@pytest.mark.slow` for FFmpeg integration
+- **Testing**: `pytest>=8.0`; run the suite with `python -m pytest -q`; `@pytest.mark.render` for browser tests, `@pytest.mark.slow` for FFmpeg integration
 - **Package**: `pip install -e .` from repo root
 - **Entry point**: `omniframe` CLI script (Typer-based)
 
