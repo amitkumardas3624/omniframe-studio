@@ -125,6 +125,16 @@ this section is the evidence.
 **Still true after this release**
 
 - No DCC host was verified: `import_tested` = 0, `production_candidate` = 0.
-- The `install`/`wheel` CI jobs had not yet executed on a hosted runner at tagging time.
 - The Phase-4 "server imports without fastapi" criterion is still unmet as literally written and is
   carried as a dependency declaration, not a waiver.
+
+**Changed after this release**
+
+- The "new CI jobs never ran on a hosted runner" limitation is **closed**: they ran on the tagged
+  commit. The `install` jobs (6/6) and the `wheel` job passed; the `test` job failed on all three
+  Python versions with a collection error because two pre-existing test modules imported the
+  optional `fastapi` without a guard. Fixed in the follow-up commit by guarding both modules with
+  `pytest.importorskip("fastapi")`, installing `".[dev,ui]"` in the `test` job so the UI tests
+  actually run, and declaring the Starlette `TestClient` HTTP client in the `dev` extra.
+- The published sdist still ships the two test modules in their pre-fix form; the library code in
+  the artifacts is unaffected.

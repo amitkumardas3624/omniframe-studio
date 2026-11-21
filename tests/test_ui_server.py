@@ -1,6 +1,16 @@
-from fastapi.testclient import TestClient
+"""Host-independent checks for the backend app itself.
 
-from omniframe.backend.server import create_app
+When FastAPI is not installed the whole module is skipped (not failed) via
+``pytest.importorskip``, matching the other UI test modules.
+"""
+
+import pytest
+
+fastapi = pytest.importorskip("fastapi")  # noqa: F841  (skips module if missing)
+
+from fastapi.testclient import TestClient  # noqa: E402
+
+from omniframe.backend.server import create_app  # noqa: E402
 
 
 def test_ui_app_starts_and_serves_health() -> None:

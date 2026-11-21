@@ -458,6 +458,66 @@ environment, `doctor --json` reports **`ready: true`**, with only the optional n
 the five DCC hosts listed as missing. That closes the loop: the published artifact installs and comes
 up ready on a machine that is provisioned the way the installer scripts provision it.
 
+### Published release
+
+| Fact | Value |
+|------|-------|
+| Tag | `v0.2.0` (annotated), pointing at commit `f7626db` |
+| Release | <https://github.com/amitkumardas3624/omniframe-studio/releases/tag/v0.2.0> (published, not a draft, not a pre-release) |
+| Assets | the wheel, the sdist, `artifacts.sha256`, and one per-archive entry sidecar for each archive |
+
+Archive digests, as published:
+
+```
+626743ac45037ae61bd44351d3fd979397249021871569bb4f8fca221e285413  omniframe_studio-0.2.0-py3-none-any.whl
+2fabfe78def4e6bed9c7143fb518b2eaa6c2b997f0466f0f6f1ea3d1c43625ff  omniframe_studio-0.2.0.tar.gz
+```
+
+**Downloaded-artifact verification.** The assets were downloaded back from the published release and
+checked against the published `artifacts.sha256`: both **MATCH**. The downloaded wheel was then
+unpacked and all **73** of its entries were checked against the published per-archive sidecar: **73
+matched, 0 problems**. Finally the *downloaded* wheel was installed into a clean virtual environment
+(`import omniframe` → `0.2.0`, `omniframe --help` → exit 0), and after adding the optional `render`
+extra and Chromium, `doctor --json` reports **`ready: true`**.
+
+### CI on a hosted runner — and the defect it exposed
+
+This release is the first time the workflow ran on a real GitHub runner, so the "never executed on a
+hosted runner" limitation is now closed — and it immediately exposed a defect.
+
+On the tagged commit `f7626db`:
+
+- `install` (3.10/3.11/3.12 × no-extras/`[dev]`) — **6/6 passed**
+- `wheel` — **passed**
+- `test` (3.10/3.11/3.12) — **failed on all three**, with a *collection* error, not a test failure:
+
+```
+ERROR collecting tests/test_ui_server.py
+ERROR collecting tests/test_update_api.py
+E   ModuleNotFoundError: No module named 'fastapi'
+```
+
+This is exactly the pre-existing debt Phase 4 recorded — *"tests/test_ui_server.py — no
+`importorskip` guard"* — except that `tests/test_update_api.py` had it too. The `test` job installs
+only `.[dev]`, and `fastapi` lives in the `ui` extra, so two test modules imported an optional
+framework without a guard and the whole collection aborted before a single test ran. The library code
+was never exercised as broken; the suite could not even be collected.
+
+**Fixed in the follow-up commit** (on `master`, after the tag):
+
+- both modules now use `pytest.importorskip("fastapi")` like their sibling UI test modules, so a
+  suite without the optional framework **skips** instead of erroring;
+- the `test` job installs `".[dev,ui]"`, so the UI tests are no longer skipped in CI — they run;
+- the HTTP client that Starlette's `TestClient` needs is now **declared**: `httpx>=0.27,<0.29`, plus
+  `httpx2>=2.0.0` for Python ≥ 3.11 (Starlette 1.10 prefers `httpx2`; older Starlette uses `httpx`).
+  It was previously undeclared — the UI tests only worked locally because an unrelated package
+  happened to pull it in — and the marker keeps the 3.10 CI job installable.
+
+The published `v0.2.0` artifacts are unaffected by this: the fix touches test files, the `dev` extra
+and the workflow, not the library code the artifacts contain. The one caveat is honest and small: the
+published **sdist** ships the two test modules in their pre-fix form, so running `pytest` from an
+unpacked sdist on a machine without `fastapi` would still hit that collection error.
+
 ---
 
 ## Known debt, deliberately not touched

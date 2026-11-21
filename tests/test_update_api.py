@@ -2,9 +2,13 @@ from __future__ import annotations
 
 import json
 
-from fastapi.testclient import TestClient
+import pytest
 
-import omniframe.backend.server as server
+fastapi = pytest.importorskip("fastapi")  # noqa: F841  (skips module if missing)
+
+from fastapi.testclient import TestClient  # noqa: E402
+
+import omniframe.backend.server as server  # noqa: E402
 
 
 def test_update_status_returns_mocked_update(monkeypatch) -> None:
