@@ -386,8 +386,9 @@ The first tagged release of OmniFrame Studio. Version `0.1.0` → `0.2.0`, bumpe
 `tests/test_install_matrix.py::test_package_version_matches_metadata`).
 
 **Why 0.2.0 and not 1.0.0.** The platform is still pre-1.0: no proprietary DCC host was verified on
-any machine, and the new CI jobs had not yet run on a hosted runner when this was tagged. The minor
-bump reflects the new subsystems and the lint cleanup; it does not claim production readiness.
+any machine, and the CI matrix had not yet run on a hosted runner when this was tagged — its first
+hosted run happened as part of this release and found three defects (see *CI on a hosted runner*). The
+minor bump reflects the new subsystems and the lint cleanup; it does not claim production readiness.
 
 ### Lint debt cleared: 95 → 0
 
@@ -480,10 +481,11 @@ matched, 0 problems**. Finally the *downloaded* wheel was installed into a clean
 (`import omniframe` → `0.2.0`, `omniframe --help` → exit 0), and after adding the optional `render`
 extra and Chromium, `doctor --json` reports **`ready: true`**.
 
-### CI on a hosted runner — and the defect it exposed
+### CI on a hosted runner — and the defects it exposed
 
 This release is the first time the workflow ran on a real GitHub runner, so the "never executed on a
-hosted runner" limitation is now closed — and it immediately exposed a defect.
+hosted runner" limitation is now closed — and the runner immediately found three defects, one per
+attempt. None of them was visible locally, and two of them were real bugs in the library.
 
 On the tagged commit `f7626db`:
 
@@ -513,10 +515,76 @@ was never exercised as broken; the suite could not even be collected.
   It was previously undeclared — the UI tests only worked locally because an unrelated package
   happened to pull it in — and the marker keeps the 3.10 CI job installable.
 
-The published `v0.2.0` artifacts are unaffected by this: the fix touches test files, the `dev` extra
-and the workflow, not the library code the artifacts contain. The one caveat is honest and small: the
-published **sdist** ships the two test modules in their pre-fix form, so running `pytest` from an
-unpacked sdist on a machine without `fastapi` would still hit that collection error.
+That fixed collection, but not the job. Three further runs were needed, and each one was a defect the
+local suite could not see because it runs on Windows.
+
+**Defect 2 — the streaming encoder never collected FFmpeg's exit status** (`4ebc7ea`). Run
+`44942830309` got past collection and failed four tests in `tests/test_streaming_pipeline.py` on
+3.10, 3.11 and 3.12 alike:
+
+```
+ValueError: flush of closed file
+  .../subprocess.py:2067: in _communicate
+    self.stdin.flush()
+```
+
+`RawVideoStream.close()` closed the stdin pipe to signal end-of-stream, then called
+`Popen.communicate()` — which flushes `Popen.stdin` itself before waiting, and flushing an
+already-closed file raises. The
+POSIX `_communicate` only catches `BrokenPipeError` there; the Windows implementation takes a
+different path, which is why the same four tests passed locally every time. The user-visible consequence is
+not cosmetic: every streamed render (`CodeVideoRenderer.render(stream_to_ffmpeg=...)`,
+`render_frames(stream_to_ffmpeg=...)`) raised a bare `ValueError` on Linux and macOS instead of
+returning, and the real FFmpeg stderr — the thing `RenderError` exists to carry — was thrown away.
+
+The handle is now detached (`process.stdin = None`) right after the pipe is closed, inside a
+`finally` so a failing `close()` cannot leave it attached. EOF still reaches FFmpeg and the exit
+status is still collected. `test_close_detaches_stdin_before_communicate` pins this without an FFmpeg
+binary: a fake process flushes its stdin the way CPython does, and the test verifies the pre-fix
+sequence raises while the current one returns `rc=0`.
+
+**Defect 3 — a cancel could lose to the worker's failure record** (`a87057b`). Run `44945420622`
+was green on 3.11 and 3.12 and red on 3.10 alone, in
+`tests/test_ui_jobs.py::test_submit_and_cancel_job_via_http`:
+
+```
+AssertionError: job 355f85b7... did not reach ['canceled'];
+last={... 'status': 'failed', 'error': "no worker registered for job kind 'validate'..."}
+```
+
+The HTTP surface had answered 200 with `canceled`; polling the same job returned `failed`. This is
+not a test-ordering complaint — it is a lifecycle race in `JobManager`. `cancel()` wrote `canceled`
+with no coordination with the worker, and the worker's "no registered callable" path wrote `failed`
+without ever consulting the cancel flag. Whoever wrote last won, so a job the caller had withdrawn
+could be resurrected as a queue malfunction. The same commit passed in a second run
+(`44946942008`), which is what a race looks like when it is reported as flaky.
+
+Lifecycle writes now share one lock: `cancel()` sets the flag and records `canceled` under it, the
+claim (read + `running`) runs under it, and both terminal paths re-check the flag before recording
+`failed` or `done`. `test_cancel_wins_over_a_missing_worker` submits and cancels the
+stock-kind-without-a-worker job 20 times; against the pre-fix code it failed in 4 of 5 local runs, and
+after the fix it has not failed once.
+
+**Run-by-run history**, so the green claim is auditable rather than cheerful:
+
+| Run | Commit | `install` | `wheel` | `test` |
+|---|---|---|---|---|
+| `44941271851` | `f7626db` (the tag) | 6/6 | pass | fail — `fastapi` collection error, ×3 |
+| `44942289090` | `491a427` | 6/6 | pass | fail — 10 tests, ×3 |
+| `44942830309` | `5bdd203` | 6/6 | pass | fail — closed stdin, ×3 |
+| `44945420622` | `4ebc7ea` | 6/6 | pass | fail — cancel race, 3.10 only |
+| `44946942008` | `4ebc7ea` | 6/6 | pass | pass — same commit, race won |
+| `44947420899` | `a87057b` | 6/6 | pass | **pass ×3** |
+
+The last row is the gate: all ten jobs success, on 3.10, 3.11 and 3.12.
+
+**What the published artifacts contain.** The `v0.2.0` tag points at `f7626db`, so the published
+wheel and sdist carry the pre-fix form of both library defects above: a streamed render on POSIX
+raises `ValueError: flush of closed file` instead of returning, and a canceled queued job can be
+overwritten as `failed` by the worker. Both fixes are on `master` after the tag (`4ebc7ea`,
+`a87057b`) and belong in the next release. The sdist additionally ships the two test modules in
+their `fastapi`-unguarded form. The tag's own release notes stay as written — they describe what was
+verified at `f7626db` — but nothing should cite this tag as a CI-verified build.
 
 ---
 
@@ -528,8 +596,12 @@ unpacked sdist on a machine without `fastapi` would still hit that collection er
 2. Tree-wide lint debt: 95 errors against a 97-error pristine baseline. The pre-existing `test` CI job
    fails on it and will keep failing until someone owns a cleanup phase. **Cleared during the 0.2.0
    release run: 0 errors.**
-3. `tests/test_ui_server.py` — no `importorskip` guard (pre-existing).
+3. `tests/test_ui_server.py` — no `importorskip` guard (pre-existing). **Resolved during the 0.2.0
+   release run: both `test_ui_server.py` and `test_update_api.py` now `importorskip("fastapi")`, and
+   the `test` job installs `.[dev,ui]` so they run rather than skip there.**
 4. The new CI `install`/`wheel` jobs have never run on a hosted runner (local YAML/static evidence only).
+   **Closed during the 0.2.0 release run: they ran on the tagged commit and on every follow-up, and
+   all ten jobs are green at `a87057b` (run `44947420899`).**
 5. `python -m build` is unavailable here; `pip wheel . --no-deps -w dist` is the accepted substitute, so
    nothing in this phase proves an sdist builds. **Resolved during the 0.2.0 release run: `build` was
    installed and a real sdist was produced and verified.**
@@ -559,10 +631,22 @@ python -m omniframe.cli doctor --json
 
 ## Next
 
-Phase 0–5 gates all pass on engineering scope, and the release-blocking repository-identity
-question is now recorded and resolved (canonical source named by the user on 2026-11-22 and propagated
-to every surface). What remains before a public release is the operator's own release run: re-run
-`docs/release-checklist.md` from the top, bump the version in both places, tag, build the artifacts and
-publish them with their `artifacts.sha256` sidecar. The limitations above still stand — no DCC host was
-verified, no sdist build was proven, and the new CI jobs have not yet run on a live GitHub runner.
+Phase 0–5 gates all pass on engineering scope, the repository-identity question is resolved (canonical
+source named by the user on 2026-11-22 and propagated to every surface), `0.2.0` is tagged and published,
+and the workflow has now run on a hosted runner with all ten jobs green at `a87057b`.
+
+What that hosted run changed about "what remains": a real sdist is no longer unproven, and CI is no
+longer only static evidence — but it also found two shipped defects, so the next release is not
+optional housekeeping:
+
+1. **`0.2.1` should ship `4ebc7ea` and `a87057b`.** The `v0.2.0` artifacts on the release page contain both
+   library defects described above. They are fixed on `master`; cutting a release is what puts the
+   fixes in front of anyone installing from PyPI or from the GitHub release page, and it is the only
+   honest way to stop the "CI-verified" claim from being attached to an artifact that is not.
+2. **Verify a DCC host.** `import_tested` is still 0 and `production_candidate` still 0 for every
+   bridge; until one host is actually launched against the bridge entry points, those numbers stay
+   where they are and this report keeps saying so.
+3. **Run the security scan.** The Aikido scan is still a gap (item 7 above), recorded rather than
+   assumed clean.
+
 Full proprietary application cloning remains explicitly out of scope.

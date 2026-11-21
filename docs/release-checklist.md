@@ -130,11 +130,25 @@ this section is the evidence.
 
 **Changed after this release**
 
-- The "new CI jobs never ran on a hosted runner" limitation is **closed**: they ran on the tagged
-  commit. The `install` jobs (6/6) and the `wheel` job passed; the `test` job failed on all three
-  Python versions with a collection error because two pre-existing test modules imported the
-  optional `fastapi` without a guard. Fixed in the follow-up commit by guarding both modules with
-  `pytest.importorskip("fastapi")`, installing `".[dev,ui]"` in the `test` job so the UI tests
-  actually run, and declaring the Starlette `TestClient` HTTP client in the `dev` extra.
-- The published sdist still ships the two test modules in their pre-fix form; the library code in
-  the artifacts is unaffected.
+- The "new CI jobs never ran on a hosted runner" limitation is **closed**, and the full matrix is
+  green at `a87057b` (run `44947420899`): six `install` jobs, `wheel`, and `test` on 3.10, 3.11 and
+  3.12. It took six runs and three defects to get there; the run table is in
+  `docs/phase-reports/phase5-release.md` under *CI on a hosted runner*.
+- `491a427` (tests, workflow and packaging metadata only): `tests/test_ui_server.py` and
+  `tests/test_update_api.py` guard the optional framework with `pytest.importorskip("fastapi")`, the
+  `test` job installs `".[dev,ui]"` plus an FFmpeg step so those tests run rather than skip, and the
+  Starlette `TestClient` HTTP client is declared in the `dev` extra instead of being borrowed from an
+  unrelated package.
+- `4ebc7ea` (library): `RawVideoStream.close()` closed the stdin pipe and then called
+  `Popen.communicate()`, which flushes that same handle on POSIX and raised
+  `ValueError: flush of closed file`. Every streamed render raised instead of returning on Linux and
+  macOS, and FFmpeg's own stderr never reached `RenderError`. The handle is now detached after the
+  pipe is closed; EOF and the exit status are unchanged for FFmpeg.
+- `a87057b` (library): `JobManager` settles its lifecycle writes under one lock, so `cancel()` can no
+  longer be overwritten by the worker's `done` / `failed` record, or by the "no worker registered"
+  failure it writes for a stock kind with no callable.
+- **The published `v0.2.0` wheel and sdist were built at `f7626db`, before all three commits.** The
+  wheel's library code therefore contains both defects; the sdist additionally ships the two
+  unguarded test modules. The release notes remain accurate as a record of what was verified at that
+  commit, but this tag must not be cited as a CI-verified build. A follow-up release is the honest way
+  to ship the fixes.
