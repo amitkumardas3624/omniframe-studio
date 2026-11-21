@@ -50,7 +50,9 @@ def test_concat_auto_copy_uses_stream_copy(monkeypatch, tmp_path):
         ]
     }
     monkeypatch.setattr(ffmpeg_module, "ffprobe_info", lambda path: info)
-    monkeypatch.setattr(compositor_module, "ffprobe_info", lambda path: info)
+    # Defensive: the compositor module no longer re-exports ffprobe_info, so this
+    # patch is allowed to be a no-op. The live call path is ffmpeg_module.ffprobe_info.
+    monkeypatch.setattr(compositor_module, "ffprobe_info", lambda path: info, raising=False)
     calls = []
     monkeypatch.setattr(compositor_module, "run_ffmpeg", lambda args: calls.append(args) or "")
     Compositor().concat_videos(

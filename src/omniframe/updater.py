@@ -15,8 +15,9 @@ import subprocess
 import sys
 import tempfile
 import time
+from collections.abc import Callable, Iterator
 from pathlib import Path
-from typing import Any, Callable, Iterator, Sequence
+from typing import Any
 from urllib.error import HTTPError
 from urllib.request import Request, urlopen
 
@@ -100,7 +101,7 @@ def _compare_prerelease(left: tuple[str, ...] | None, right: tuple[str, ...] | N
         return 1
     if right is None:
         return -1
-    for left_part, right_part in zip(left, right):
+    for left_part, right_part in zip(left, right, strict=False):
         if left_part == right_part:
             continue
         left_numeric = left_part.isdigit()

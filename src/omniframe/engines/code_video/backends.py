@@ -20,10 +20,11 @@ from __future__ import annotations
 
 import json
 import re
-from io import BytesIO
 from abc import ABC, abstractmethod
+from collections.abc import Callable
+from io import BytesIO
 from pathlib import Path
-from typing import Any, Callable
+from typing import Any
 
 from ...core.errors import DependencyMissing, EngineUnavailable
 from ...core.logging import get_logger
@@ -71,7 +72,7 @@ window.__omniframe_mulberry32 = function (a) {
         return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
     };
 };
-""";
+"""
 
 
 def build_frame_payload(scene: CodeScene, frame: int) -> dict[str, Any]:
@@ -122,7 +123,13 @@ class Backend(ABC):
         """
 
     def close(self) -> None:
-        """Release any resources held by the backend."""
+        """Release any resources held by the backend.
+
+        This is an optional hook, not an abstract method: a backend that holds
+        resources overrides it, and the default implementation intentionally does
+        nothing so that resource-free backends need no boilerplate.
+        """
+        return None
 
 
 # ---------------------------------------------------------------------------

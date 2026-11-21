@@ -2,8 +2,9 @@
 
 from __future__ import annotations
 
+from collections.abc import Sequence
 from pathlib import Path
-from typing import Any, Sequence
+from typing import Any
 
 from ..._native import native_available, native_module
 from ...core.errors import EngineUnavailable, ValidationError
@@ -119,7 +120,6 @@ def _apply_transform(image, props: dict[str, float]):
 
 
 def _apply_opacity(image, opacity: float):
-    from PIL import Image
 
     opacity = max(0.0, min(1.0, float(opacity)))
     if opacity >= 0.999:

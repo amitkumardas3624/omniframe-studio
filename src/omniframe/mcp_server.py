@@ -19,14 +19,12 @@ The server reads the global action registry and renders schemas via
 """
 from __future__ import annotations
 
+import asyncio
 import json
 import sys
-import asyncio
-from pathlib import Path
 from typing import Any
 
 from .core.agent_runtime.actions import ensure_builtin_actions
-from .core.agent_runtime.registry import get_registry, build_tool_manifest
 from .core.errors import OmniFrameError
 from .updater import get_cached_update_advisory
 
@@ -94,7 +92,6 @@ async def _mcp_stdio_server() -> None:
     import json as _json
 
     buf = ""
-    pending_msg: dict[str, Any] | None = None
 
     async def _read_line() -> str | None:
         nonlocal buf

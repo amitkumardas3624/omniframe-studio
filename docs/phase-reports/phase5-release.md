@@ -243,6 +243,11 @@ The −2 was not engineered by deleting debt: the phase added files and removed 
 remaining 95 are pre-existing debt recorded by Phases 0–4; the CI lint gate stays red until that is
 cleared, and this phase is not the place it clears.
 
+> **Superseded during the 0.2.0 release run.** The pre-existing debt was cleared afterwards, so
+> `ruff check src tests` now reports `All checks passed!` (0 errors) and the CI lint gate is green.
+> The figures above record the state **at the Phase-5 gate**, which is what this report measured.
+> See *Release 0.2.0* below for the cleanup and what it changed.
+
 ### `compatibility_report({"machine": "probe"})`
 Ran; `summary` = `{"unverified": 4, "import_tested": 0, "render_tested": 3}`; per-preset values as in the
 table above. Host-free: no DCC host is touched at all.
@@ -368,8 +373,90 @@ is not a goal that could be verified or denied here.
 | 4 | `phase4-ui.md` | GATE PASS — with one documented wording deviation (carried above) |
 | 5 | this file | GATE PASS — engineering scope; identity blocker resolved |
 
-Phase 0's deferred items are the pre-existing lint debt and CI redness; both remain open by design,
-recorded in every subsequent report and not regressed to (−2 net at Phase 5).
+Phase 0's deferred items were the pre-existing lint debt and CI redness; both were recorded in every
+subsequent report and not regressed to (−2 net at Phase 5). **Both were later cleared** — the lint debt
+during the 0.2.0 release run (see *Release 0.2.0*), which also turned the CI lint gate green.
+
+---
+
+## Release 0.2.0 — 2026-11-22
+
+The first tagged release of OmniFrame Studio. Version `0.1.0` → `0.2.0`, bumped together in
+`pyproject.toml` and `src/omniframe/__init__.py` (the sync is enforced by
+`tests/test_install_matrix.py::test_package_version_matches_metadata`).
+
+**Why 0.2.0 and not 1.0.0.** The platform is still pre-1.0: no proprietary DCC host was verified on
+any machine, and the new CI jobs had not yet run on a hosted runner when this was tagged. The minor
+bump reflects the new subsystems and the lint cleanup; it does not claim production readiness.
+
+### Lint debt cleared: 95 → 0
+
+The tree-wide lint debt (95 errors against a 97-error pristine baseline) was the last red gate. It is
+now **0 errors**, so the pre-existing CI `test` job's lint step can pass.
+
+- 74 of the 95 were ruff's own safe auto-fixes: unused imports, import sorting, `typing.Dict`/`List`
+  → builtin generics, `Optional[X]` → `X | None`, deprecated `typing` imports, quoted annotations;
+- the remaining 18 were fixed by hand: `zip(..., strict=False)` where the original `zip` behaviour had
+  to be preserved, `raise ... from exc`, an unused loop variable renamed, an unused local removed, the
+  `Backend.close` optional hook documented, and the ten `%`-format call sites in the bridge generators
+  rewritten as f-strings.
+
+**One real bug fixed on the way.** The Premiere Pro bridge generator emitted its `CLIPS` entries with
+**doubled braces** (`{{ track: 0, ... }}`) — leftover escaping from an earlier template — which is a
+JavaScript syntax error in the generated ExtendScript file, while every other object literal in the
+same file used single braces. The rewrite to f-strings corrected it. It was caught by generating the
+bridge scripts before and after the change and diffing them byte for byte: the `after_effects` and
+`davinci_resolve` outputs were byte-identical, and the only Premiere difference was the two `CLIPS`
+lines.
+
+**One test adjusted.** `tests/test_zero_reencode.py` monkeypatched `ffprobe_info` on the compositor
+module, but that module never used the name (it was a dead re-export) — the live call path is
+`ffmpeg.ffprobe_info`. The patch is now `raising=False`, with a comment saying so.
+
+### Packaging metadata modernised
+
+`project.license` moved from the deprecated TOML table to the SPDX string `"MIT"`, the deprecated
+`License ::` classifier was dropped, and the build requirement moved to `setuptools>=77` (the first
+release that emits `License-Expression`). The wheel now carries `Metadata-Version: 2.4`,
+`License-Expression: MIT` and `License-File: LICENSE`, and the build emits no deprecation warnings.
+
+### Artifacts
+
+| File | Size | Contents verified |
+|------|------|-------------------|
+| `omniframe_studio-0.2.0-py3-none-any.whl` | 173,730 bytes | 73 entries; `omniframe/py.typed` present; `omniframe/agent/schemas/*.json` present |
+| `omniframe_studio-0.2.0.tar.gz` | 198,211 bytes | 144 entries; `pyproject.toml`, `LICENSE` and `src/omniframe/py.typed` present |
+
+Built with `python -m build` (1.6.1) — **both** a wheel and a real sdist, which closes the Phase-5
+limitation that only `pip wheel` was available.
+
+### Checksums
+
+- `artifacts.sha256` — sha256 of the two **archive files**, in `sha256sum` format, so a downloader can
+  run `sha256sum -c artifacts.sha256` against the bytes they received. Verified here against
+  `Get-FileHash`: both **MATCH**.
+- `omniframe_studio-0.2.0-py3-none-any.whl.sha256` / `omniframe_studio-0.2.0.tar.gz.sha256` —
+  per-entry digests of the contents inside each archive, produced by
+  `omniframe.release.sign.checksum_archive` (73 and 123 entries).
+
+### Verification at 0.2.0
+
+- `python -m compileall -q src` → exit 0
+- `python -m pytest -q` → **362 passed, 1 skipped** (the host-dependent `bridge_host` test)
+- `ruff check src tests` → **All checks passed!** (0 errors)
+- `pip install -e .` and `pip install -e ".[dev]"` → exit 0; `omniframe --help` → exit 0;
+  `OMNIFRAME_IMPORT_OK 0.2.0`
+- `compatibility_report` → `{"unverified": 4, "import_tested": 0, "render_tested": 3}` (unchanged)
+- `omniframe doctor --json` → `ready: true` on the build machine (ffmpeg + Chromium present)
+
+**Fresh-environment install (post-release check).** The built wheel was installed into a clean virtual
+environment: `import omniframe` → `0.2.0`, `omniframe --help` → exit 0. `doctor` in that bare
+environment reports `ready: false` **only** because a default install has no Chromium — the optional
+`render` extra (playwright) is not part of the core dependency set, and the `ready` flag requires both
+ffmpeg and Chromium. After adding `playwright` and `playwright install chromium` to that same clean
+environment, `doctor --json` reports **`ready: true`**, with only the optional native accelerator and
+the five DCC hosts listed as missing. That closes the loop: the published artifact installs and comes
+up ready on a machine that is provisioned the way the installer scripts provision it.
 
 ---
 
@@ -377,13 +464,15 @@ recorded in every subsequent report and not regressed to (−2 net at Phase 5).
 
 1. `src/omniframe/backend/server.py` — legacy typing (`Dict`/`List`/`Optional`), two unsorted import blocks,
    dead imports (`subprocess`, `uuid`, `concurrent.futures.*`), one unused local (`result`). Pre-existing;
-   left alone so the phase diff stays honest.
+   left alone so the phase diff stays honest. **Cleared during the 0.2.0 release run.**
 2. Tree-wide lint debt: 95 errors against a 97-error pristine baseline. The pre-existing `test` CI job
-   fails on it and will keep failing until someone owns a cleanup phase.
+   fails on it and will keep failing until someone owns a cleanup phase. **Cleared during the 0.2.0
+   release run: 0 errors.**
 3. `tests/test_ui_server.py` — no `importorskip` guard (pre-existing).
 4. The new CI `install`/`wheel` jobs have never run on a hosted runner (local YAML/static evidence only).
 5. `python -m build` is unavailable here; `pip wheel . --no-deps -w dist` is the accepted substitute, so
-   nothing in this phase proves an sdist builds.
+   nothing in this phase proves an sdist builds. **Resolved during the 0.2.0 release run: `build` was
+   installed and a real sdist was produced and verified.**
 6. Optional DCC hosts are absent, so bridge work is fixture-level (`bridges/*.py` runbook paths unexecuted).
 7. Aikido security-scan tooling was unavailable in this session; the repo has not been scanned by it, and
    that is recorded rather than implied clean.

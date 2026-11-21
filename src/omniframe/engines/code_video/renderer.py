@@ -16,7 +16,7 @@ from typing import Any
 from ...core.errors import ValidationError
 from ...core.logging import get_logger
 from ..compositor.raw_stream import RawVideoStream
-from .backends import Backend, build_frame_payload, parse_stack_location, select_backend
+from .backends import Backend, select_backend
 from .scene import CodeScene
 
 LOG = get_logger("engines.code_video.renderer")

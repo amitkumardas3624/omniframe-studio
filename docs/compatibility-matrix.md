@@ -79,6 +79,21 @@ they are skipped on this machine and that skip is the honest result. CapCut's
 script we would hand to the host — it is `structurally_checked`, never
 `import_tested`.
 
+## Release 0.2.0 verification
+
+The report was re-executed at release time on the machine described above, with the release commit
+built and installed, and returned the identical result:
+
+```
+summary = {"unverified": 4, "import_tested": 0, "render_tested": 3}
+```
+
+`h264`, `webm`/VP9 and `gif` remain `render_tested` because they were encoded and probed again
+during the release run; `h265`, `prores`, `qtrle_alpha` and `png_sequence` remain `unverified`
+because no artifact for them was produced. The wheel was additionally installed into a clean
+virtual environment and imported cleanly (`omniframe 0.2.0`), but that proves packaging, not codec
+or host behaviour — it changes no row in either table above.
+
 ## What this means for a release
 
 - Deliveries targeting `h264`, `webm`/VP9 and GIF are backed by a produced artifact

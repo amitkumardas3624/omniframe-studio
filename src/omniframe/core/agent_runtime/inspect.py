@@ -11,8 +11,9 @@ import json
 import shutil
 import subprocess
 import tempfile
+from collections.abc import Sequence
 from pathlib import Path
-from typing import Any, Iterable, Sequence
+from typing import Any
 
 from ..errors import OmniFrameError
 from ..logging import get_logger

@@ -46,7 +46,7 @@ class Layer:
 
     # -- conversion -----------------------------------------------------
     @classmethod
-    def from_spec(cls, spec: Any) -> "Layer":
+    def from_spec(cls, spec: Any) -> Layer:
         """Build a layer from a :class:`CartoonLayerSpec`."""
 
         transform = getattr(spec, "transform", None)
@@ -84,7 +84,8 @@ class Layer:
     def to_spec(self) -> Any:
         """Convert back into a :class:`CartoonLayerSpec`."""
 
-        from ...core.timeline_schema.models import CartoonLayerSpec, Keyframe as SchemaKeyframe, Transform
+        from ...core.timeline_schema.models import CartoonLayerSpec, Transform
+        from ...core.timeline_schema.models import Keyframe as SchemaKeyframe
 
         return CartoonLayerSpec(
             id=self.id,
@@ -143,7 +144,7 @@ class CartoonScene:
 
     # -- conversion -----------------------------------------------------
     @classmethod
-    def from_spec(cls, spec: Any) -> "CartoonScene":
+    def from_spec(cls, spec: Any) -> CartoonScene:
         """Build a scene from a :class:`CartoonSceneSpec`."""
 
         camera = getattr(spec, "camera", None)
@@ -174,7 +175,8 @@ class CartoonScene:
     def to_spec(self) -> Any:
         """Convert back into a :class:`CartoonSceneSpec`."""
 
-        from ...core.timeline_schema.models import CartoonSceneSpec, Keyframe as SchemaKeyframe, Transform
+        from ...core.timeline_schema.models import CartoonSceneSpec, Transform
+        from ...core.timeline_schema.models import Keyframe as SchemaKeyframe
 
         return CartoonSceneSpec(
             width=self.width,

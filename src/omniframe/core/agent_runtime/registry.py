@@ -9,8 +9,9 @@ tools``) and call actions without reading the source.
 from __future__ import annotations
 
 import json
+from collections.abc import Callable
 from dataclasses import dataclass, field
-from typing import Any, Callable
+from typing import Any
 
 from ..errors import ActionError, PreconditionFailed, ToolNotFound, ValidationError
 from ..logging import get_logger

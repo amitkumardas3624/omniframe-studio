@@ -11,7 +11,7 @@ import subprocess
 import sys
 import webbrowser
 from pathlib import Path
-from typing import Any, Optional
+from typing import Any
 
 import typer
 
@@ -213,7 +213,7 @@ def ui(
 
 @app.command()
 def tools(
-    output: Optional[str] = typer.Option(None, "--out", help="Write the tool manifest to a file."),
+    output: str | None = typer.Option(None, "--out", help="Write the tool manifest to a file."),
     list_only: bool = typer.Option(False, "--list", help="Print just the action names."),
 ) -> None:
     """Print the JSON tool manifest that agents program against."""
@@ -241,7 +241,7 @@ def tools(
 @app.command()
 def run_tool(
     name: str = typer.Argument(..., help="Action name, e.g. environment.detect."),
-    params: Optional[str] = typer.Option(None, "--params", help="JSON object of arguments."),
+    params: str | None = typer.Option(None, "--params", help="JSON object of arguments."),
 ) -> None:
     """Execute a registered action and print its JSON result."""
 
@@ -258,14 +258,14 @@ def run_tool(
         result = registry.execute(name, payload)
     except OmniFrameError as exc:
         _echo_json(exc.to_dict())
-        raise typer.Exit(1)
+        raise typer.Exit(1) from exc
     _echo_json(result)
 
 
 @app.command()
 def route(
-    capability: Optional[str] = typer.Option(None, "--capability", help="Capability to satisfy."),
-    preferred: Optional[str] = typer.Option(None, "--preferred", help="Preferred engine id."),
+    capability: str | None = typer.Option(None, "--capability", help="Capability to satisfy."),
+    preferred: str | None = typer.Option(None, "--preferred", help="Preferred engine id."),
 ) -> None:
     """Show which engine would be selected for a task."""
 
@@ -383,7 +383,7 @@ def project_render(
     backend: str = typer.Option("auto", "--backend", help="auto | playwright | stub"),
     cartoon_backend: str = typer.Option("auto", "--cartoon-backend", help="auto | python | native"),
     resume: bool = typer.Option(False, "--resume", help="Skip frames that already exist."),
-    stream_to_ffmpeg: Optional[str] = typer.Option(
+    stream_to_ffmpeg: str | None = typer.Option(
         None,
         "--stream-to-ffmpeg",
         help="Stream a single renderable clip as raw RGBA to this video path; disables PNG/resume.",
@@ -476,9 +476,9 @@ def project_render(
 @project_app.command("compose")
 def project_compose(
     project: str = typer.Argument(...),
-    output: Optional[str] = typer.Option(None, "--out", help="Output video file."),
+    output: str | None = typer.Option(None, "--out", help="Output video file."),
     preset: str = typer.Option("h264", "--preset"),
-    frames_dir: Optional[str] = typer.Option(None, "--frames", help="Directory of PNG frames."),
+    frames_dir: str | None = typer.Option(None, "--frames", help="Directory of PNG frames."),
 ) -> None:
     """Compose rendered frames into a video with FFmpeg."""
 
@@ -681,7 +681,7 @@ def inspect_media(
     video: str = typer.Option(..., "--video", help="Video file to sample."),
     output_dir: str = typer.Option("out/inspect", "--output-dir"),
     count: int = typer.Option(12, "--count", help="How many frames to sample."),
-    contact_sheet: Optional[str] = typer.Option(None, "--contact-sheet"),
+    contact_sheet: str | None = typer.Option(None, "--contact-sheet"),
 ) -> None:
     """Extract frames from a video and build a contact sheet."""
 

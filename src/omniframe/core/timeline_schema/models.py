@@ -317,7 +317,7 @@ class Clip(OmniModel):
     metadata: dict[str, Any] = Field(default_factory=dict)
 
     @model_validator(mode="after")
-    def _check_trim(self) -> "Clip":
+    def _check_trim(self) -> Clip:
         if self.out_frame is not None and self.out_frame <= self.in_frame:
             raise ValueError("clip.out_frame must be greater than clip.in_frame")
         return self

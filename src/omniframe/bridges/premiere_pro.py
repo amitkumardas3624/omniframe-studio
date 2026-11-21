@@ -451,17 +451,12 @@ class PremiereProBridge(ToolBridge):
         for track, clip in clips:
             item_id = media_index.get(str(clip.source), 0) if clip.source else 0
             add(
-                "        {{ track: %d, item: %d, start: %s, in: %s, out: %s, name: %s, "
-                "marker: %s }},"
-                % (
-                    tracks.index(track),
-                    item_id,
-                    _js_string(frames_to_timecode(clip.start_frame, fps)),
-                    _js_string(frames_to_timecode(clip.in_frame, fps)),
-                    _js_string(frames_to_timecode(clip.in_frame + clip.duration_frames, fps)),
-                    _js_string(clip.name or clip.id),
-                    _js_string(clip.metadata.get("marker") or ""),
-                )
+                f"        {{ track: {tracks.index(track)}, item: {item_id}, "
+                f"start: {_js_string(frames_to_timecode(clip.start_frame, fps))}, "
+                f"in: {_js_string(frames_to_timecode(clip.in_frame, fps))}, "
+                f"out: {_js_string(frames_to_timecode(clip.in_frame + clip.duration_frames, fps))}, "
+                f"name: {_js_string(clip.name or clip.id)}, "
+                f"marker: {_js_string(clip.metadata.get('marker') or '')} }},"
             )
         add("    ];")
 
@@ -478,12 +473,9 @@ class PremiereProBridge(ToolBridge):
         add("    var TRANSITIONS = [")
         for transition in project.transitions:
             add(
-                "        {{ at: %s, kind: %s, duration: %d }},"
-                % (
-                    _js_string(frames_to_timecode(transition.at_frame, fps)),
-                    _js_string(transition.kind),
-                    int(transition.duration_frames),
-                )
+                f"        {{ at: {_js_string(frames_to_timecode(transition.at_frame, fps))}, "
+                f"kind: {_js_string(transition.kind)}, "
+                f"duration: {int(transition.duration_frames)} }},"
             )
         add("    ];")
 

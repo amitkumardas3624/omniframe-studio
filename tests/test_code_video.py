@@ -90,7 +90,7 @@ class TestStubBackend:
         renderer = CodeVideoRenderer(backend="stub")
         first = renderer.render(make_scene(), tmp_path / "a")
         second = renderer.render(make_scene(), tmp_path / "b")
-        for left, right in zip(first.frames, second.frames):
+        for left, right in zip(first.frames, second.frames, strict=False):
             assert left.read_bytes() == right.read_bytes()
 
     def test_resume_skips_existing_frames(self, tmp_path):

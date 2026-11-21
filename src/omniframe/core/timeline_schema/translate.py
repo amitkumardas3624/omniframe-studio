@@ -17,7 +17,8 @@ from __future__ import annotations
 import re
 import xml.etree.ElementTree as ET
 from abc import ABC, abstractmethod
-from typing import Any, Callable
+from collections.abc import Callable
+from typing import Any
 
 from .models import (
     Asset,
@@ -281,7 +282,7 @@ class FCPXMLTranslator(TimelineTranslator):
                 if clip.source and not any(entry[1] == clip.source for entry in sources):
                     sources.append((clip.id, clip.source, clip.name or clip.id))
 
-        for index, (asset_id, source, name) in enumerate(sources):
+        for index, (_asset_id, source, name) in enumerate(sources):
             ref = f"r{index + 2}"
             asset_refs[source] = ref
             resources.append(
@@ -620,7 +621,7 @@ class CapCutDraftTranslator(TimelineTranslator):
             entry = {
                 "id": mid,
                 "path": asset.path or "",
-                "duration": int((asset.metadata.get("duration_us") or 0)),
+                "duration": int(asset.metadata.get("duration_us") or 0),
                 "type": "video" if asset.kind in {"video", "image"} else "audio",
                 "material_name": asset.metadata.get("name", asset.id),
             }

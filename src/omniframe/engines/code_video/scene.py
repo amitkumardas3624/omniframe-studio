@@ -40,7 +40,7 @@ class CodeScene:
             raise ValueError("fps must be > 0")
 
     @classmethod
-    def from_clip(cls, clip: Any, project: Any) -> "CodeScene":
+    def from_clip(cls, clip: Any, project: Any) -> CodeScene:
         """Build a scene from a ``Clip`` and its owning ``OmniProject``."""
 
         from ...core.errors import SchemaError

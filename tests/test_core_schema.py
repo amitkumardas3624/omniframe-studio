@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import pytest
 
-from omniframe.core.errors import SchemaError, ValidationError
+from omniframe.core.errors import SchemaError
 from omniframe.core.timeline_schema.io import load_project, save_project
 from omniframe.core.timeline_schema.models import (
     Clip,

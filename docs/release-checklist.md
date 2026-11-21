@@ -76,3 +76,55 @@ matrix before shipping, and verification after announcing.
   machine, no matter how confident the code looks.
 - The checksum sidecar is the *only* promise that the announced bytes are the
   shipped bytes; do not publish an artifact without one.
+
+## Release record — 0.2.0 (2026-11-22)
+
+What was actually run for this release, and what it produced. The checklist above is the template;
+this section is the evidence.
+
+**Pre-release**
+
+- [x] Repository identity resolved — canonical
+      `https://github.com/amitkumardas3624/omniframe-studio`, propagated to every surface, with a
+      drift guard in `tests/test_installers.py`.
+- [x] `python -m compileall -q src` → exit 0.
+- [x] `python -m pytest -q` → **362 passed, 1 skipped** (the host-dependent `bridge_host` test).
+- [x] `ruff check src tests` → **All checks passed!** — the 95-error pre-existing debt was cleared
+      in this release run, so the CI lint gate is green for the first time.
+- [x] `pip install -e .` → exit 0; `pip install -e ".[dev]"` → exit 0; `omniframe --help` → exit 0.
+- [x] Distribution built with `python -m build` (1.6.1): a wheel **and** an sdist. Wheel payload
+      checked for `omniframe/py.typed` and `omniframe/agent/schemas/*.json`; sdist payload checked
+      for `pyproject.toml`, `LICENSE` and `src/omniframe/py.typed`.
+- [x] `python -m omniframe.cli doctor --json` → `"ready": true` on the build machine.
+- [x] No proprietary DCC host claimed as tested — none is installed; `import_tested` and
+      `production_candidate` are both **0**.
+
+**During release**
+
+- [x] Version bumped in `pyproject.toml` **and** `src/omniframe/__init__.py`: `0.1.0` → `0.2.0`.
+- [x] Pre-release matrix re-run at the bumped version (results above are at 0.2.0).
+- [x] Tag `v0.2.0` created on the release commit and pushed to `origin`.
+- [x] Artifacts built: `omniframe_studio-0.2.0-py3-none-any.whl` (173,730 bytes) and
+      `omniframe_studio-0.2.0.tar.gz` (198,211 bytes).
+- [x] Checksums produced and published next to the files: `artifacts.sha256` (archive file digests,
+      `sha256sum -c`-compatible) plus one per-archive entry sidecar for each artifact.
+
+**Post-release**
+
+- [x] Downloaded-artifact verification: the recorded archive digests were re-checked against
+      `Get-FileHash` — both **MATCH**.
+- [x] Fresh-environment install: the wheel was installed into a clean virtual environment;
+      `import omniframe` → `0.2.0` and `omniframe --help` → exit 0. After adding the optional
+      `render` extra and Chromium to that same clean environment, `doctor --json` reports
+      `"ready": true` with only the optional native accelerator and the DCC hosts missing.
+- [x] `docs/compatibility-matrix.md` updated with the exact machine and environment used for this
+      verification; `render_tested` is claimed only for `h264`, `webm`/VP9 and `gif`, which were
+      actually encoded and probed.
+- [x] The release is recorded in `docs/phase-reports/phase5-release.md` (section *Release 0.2.0*).
+
+**Still true after this release**
+
+- No DCC host was verified: `import_tested` = 0, `production_candidate` = 0.
+- The `install`/`wheel` CI jobs had not yet executed on a hosted runner at tagging time.
+- The Phase-4 "server imports without fastapi" criterion is still unmet as literally written and is
+  carried as a dependency declaration, not a waiver.

@@ -21,7 +21,7 @@ from typing import Any
 
 from ..core.config import detect_davinci_resolve
 from ..core.logging import get_logger
-from ..core.timeline_schema.translate import frames_to_timecode, get_translator
+from ..core.timeline_schema.translate import get_translator
 from .base import BridgeCapability, BridgeReport, BridgeTier, GeneratedScript, ToolBridge
 
 LOG = get_logger("bridges.davinci_resolve")
@@ -282,10 +282,10 @@ class DaVinciResolveBridge(ToolBridge):
         add("    )")
         add("    sys.exit(2)")
         add("")
-        add("PROJECT_NAME = %r" % name)
-        add("FPS = %s" % float(fps))
-        add("RESOLUTION = (%d, %d)" % (int(project.meta.width), int(project.meta.height)))
-        add("OUTPUT_PATH = %r" % output_path)
+        add(f"PROJECT_NAME = {name!r}")
+        add(f"FPS = {float(fps)}")
+        add(f"RESOLUTION = ({int(project.meta.width)}, {int(project.meta.height)})")
+        add(f"OUTPUT_PATH = {output_path!r}")
         add("")
         add("MEDIA = [")
         seen: set[str] = set()
@@ -294,20 +294,17 @@ class DaVinciResolveBridge(ToolBridge):
             if source in seen:
                 continue
             seen.add(source)
-            add("    %r," % source)
+            add(f"    {source!r},")
         add("]")
         add("")
         add("CLIPS = [")
         for _track, clip in clips:
             add(
-                "    { source: %r, start_frame: %d, in_frame: %d, duration: %d, name: %r },"
-                % (
-                    str(clip.source),
-                    int(clip.start_frame),
-                    int(clip.in_frame),
-                    int(clip.duration_frames),
-                    clip.name or clip.id,
-                )
+                f"    {{ source: {str(clip.source)!r}, "
+                f"start_frame: {int(clip.start_frame)}, "
+                f"in_frame: {int(clip.in_frame)}, "
+                f"duration: {int(clip.duration_frames)}, "
+                f"name: {(clip.name or clip.id)!r} }},"
             )
         add("]")
         add("")

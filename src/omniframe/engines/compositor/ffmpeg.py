@@ -8,11 +8,15 @@ import subprocess
 import tempfile
 import threading
 import time
+from collections.abc import Sequence
 from pathlib import Path
-from typing import Any, Iterable, Sequence
+from typing import TYPE_CHECKING, Any
 
 from ...core.errors import EngineUnavailable, RenderCanceled, RenderError, ValidationError
 from ...core.logging import get_logger
+
+if TYPE_CHECKING:  # pragma: no cover - import cycle broken at runtime by __getattr__
+    from .raw_stream import RawVideoStream, stream_rgba_frames
 
 LOG = get_logger("engines.compositor.ffmpeg")
 

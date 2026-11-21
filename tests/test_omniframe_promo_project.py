@@ -2,7 +2,6 @@ from pathlib import Path
 
 from omniframe.core.timeline_schema.io import load_project
 
-
 PROJECT = Path("examples/omniframe-promo/project.json")
 
 

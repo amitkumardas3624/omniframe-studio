@@ -14,7 +14,6 @@ from omniframe.bridges import (
     DaVinciResolveBridge,
     KritaBridge,
     PremiereProBridge,
-    ToolBridge,
     bridge_report,
     get_bridge,
     list_bridges,

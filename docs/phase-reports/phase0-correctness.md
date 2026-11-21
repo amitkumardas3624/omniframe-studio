@@ -61,6 +61,7 @@ Untouched (per constraint): `examples/handwashing-2d/`, `tests/test_handwashing_
 ## Known limitations / deferred
 
 - **Lint gate is red in CI** against the recorded 98 pre-existing ruff violations. CI will not go green until lint remediation lands. This is deferred and out of Phase 0 scope.
+  - *Resolved 2026-11-22, during the 0.2.0 release run:* the pre-existing tree-wide lint debt was cleared and `ruff check src tests` now reports **0 errors**, so the CI lint gate is green. The line above records the state **at the Phase-0 gate**.
 - **Repository identity unresolved** — see `docs/repository-identity.md`. One canonical URL must be selected and propagated to remote, installers and `pyproject.toml` before any release. Also note `pyproject.toml` `Documentation` points to `tree/main` while the default branch is `master`.
   - *Resolved 2026-11-22:* the user named `https://github.com/amitkumardas3624/omniframe-studio` canonical (cause: a GitHub username change) and it was propagated to the remote, both installers, README/`SKILL.md`, `pyproject.toml` `[project.urls]`, the updater slug and the server fallback link; `Documentation` now points at `tree/master`. A drift guard was added to `tests/test_installers.py`. The line above records the state **as it stood at the Phase-0 gate**.
 - **CI workflow has never executed on a real GitHub runner**; locally verified only (except the ruff command was executed locally in a throwaway venv).

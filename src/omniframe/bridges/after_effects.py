@@ -288,21 +288,17 @@ class AfterEffectsBridge(ToolBridge):
         add("    var LAYERS = [")
         for _track, clip in layers:
             add(
-                "        { name: %s, type: %s, source: %s, in: %s, out: %s, "
-                "opacity: %s, position: [%s, %s], scale: [%s, %s], rotation: %s },"
-                % (
-                    _js_string(clip.name or clip.id),
-                    _js_string(clip.metadata.get("ae_type", _ae_type(clip))),
-                    _js_string(clip.source or ""),
-                    _js_number(clip.start_frame / fps if fps else 0),
-                    _js_number(clip.end_frame / fps if fps else 0),
-                    _js_number(clip.opacity),
-                    _js_number(clip.transform.position[0]),
-                    _js_number(clip.transform.position[1]),
-                    _js_number(clip.transform.scale[0] * 100),
-                    _js_number(clip.transform.scale[1] * 100),
-                    _js_number(clip.transform.rotation),
-                )
+                f"        {{ name: {_js_string(clip.name or clip.id)}, "
+                f"type: {_js_string(clip.metadata.get('ae_type', _ae_type(clip)))}, "
+                f"source: {_js_string(clip.source or '')}, "
+                f"in: {_js_number(clip.start_frame / fps if fps else 0)}, "
+                f"out: {_js_number(clip.end_frame / fps if fps else 0)}, "
+                f"opacity: {_js_number(clip.opacity)}, "
+                f"position: [{_js_number(clip.transform.position[0])}, "
+                f"{_js_number(clip.transform.position[1])}], "
+                f"scale: [{_js_number(clip.transform.scale[0] * 100)}, "
+                f"{_js_number(clip.transform.scale[1] * 100)}], "
+                f"rotation: {_js_number(clip.transform.rotation)} }},"
             )
         add("    ];")
 
@@ -312,13 +308,10 @@ class AfterEffectsBridge(ToolBridge):
             for kf in clip.keyframes:
                 for prop, value in kf.values.items():
                     add(
-                        "        { layer: %d, property: %s, time: %s, value: %s },"
-                        % (
-                            layers.index((_track, clip)),
-                            _js_string(prop),
-                            _js_number(kf.frame / fps if fps else 0),
-                            _js_number(value if isinstance(value, (int, float)) else 0),
-                        )
+                        f"        {{ layer: {layers.index((_track, clip))}, "
+                        f"property: {_js_string(prop)}, "
+                        f"time: {_js_number(kf.frame / fps if fps else 0)}, "
+                        f"value: {_js_number(value if isinstance(value, (int, float)) else 0)} }},"
                     )
         add("    ];")
 

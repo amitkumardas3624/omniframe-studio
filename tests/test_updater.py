@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
+from omniframe import __version__
 from omniframe.updater import (
     apply_update,
     check_for_update,
@@ -14,6 +15,18 @@ from omniframe.updater import (
 )
 
 
+def _newer_than_current() -> str:
+    """Return a release version guaranteed to be newer than this build.
+
+    Hard-coding a version here would make the test fail on every release bump,
+    so the mocked "latest release" is derived from the running version.
+    """
+
+    parts = [int(part) for part in __version__.split(".")]
+    parts[-1] += 1
+    return ".".join(str(part) for part in parts)
+
+
 def test_compare_versions_handles_prefix_and_prerelease() -> None:
     assert compare_versions("v0.2.0", "0.1.0") == 1
     assert compare_versions("0.2.0-rc.1", "0.2.0") == -1
@@ -22,21 +35,22 @@ def test_compare_versions_handles_prefix_and_prerelease() -> None:
 
 def test_check_for_update_uses_mocked_github_and_cache(tmp_path: Path) -> None:
     cache = tmp_path / "update.json"
+    latest = _newer_than_current()
     status = check_for_update(
         force=True,
         cache_path=cache,
         now=100.0,
         fetcher=lambda _: {
-            "tag_name": "v0.2.0",
+            "tag_name": f"v{latest}",
             "html_url": "https://example.test/release",
             "body": "release notes",
         },
     )
 
     assert status["update_available"] is True
-    assert status["latest_version"] == "0.2.0"
+    assert status["latest_version"] == latest
     assert status["release_url"] == "https://example.test/release"
-    assert load_cached_update_status(cache)["latest_version"] == "0.2.0"
+    assert load_cached_update_status(cache)["latest_version"] == latest
     assert get_cached_update_advisory(cache)["upgrade_command"] == "omniframe self-update"
 
 

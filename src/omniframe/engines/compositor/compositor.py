@@ -4,8 +4,9 @@ from __future__ import annotations
 
 import shutil
 import tempfile
+from collections.abc import Iterable, Sequence
 from pathlib import Path
-from typing import Any, Iterable, Sequence
+from typing import Any
 
 from ...core.errors import ValidationError
 from ...core.logging import get_logger
@@ -15,11 +16,9 @@ from .ffmpeg import (
     build_video_from_frames,
     concat_copy_compatible,
     escape_filter_path,
-    ffmpeg_available,
-    ffprobe_info,
-    video_copy_compatible,
     run_ffmpeg,
     stream_rgba_frames,
+    video_copy_compatible,
     write_concat_list,
 )
 from .presets import ExportPreset, get_preset

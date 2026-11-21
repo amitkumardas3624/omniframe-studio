@@ -3,8 +3,8 @@
 from __future__ import annotations
 
 import subprocess
+from collections.abc import Iterable, Sequence
 from pathlib import Path
-from typing import Iterable, Sequence
 
 from ...core.errors import RenderError, ValidationError
 from .ffmpeg import ffmpeg_binary
@@ -118,7 +118,7 @@ class RawVideoStream:
                 returncode=returncode,
             )
 
-    def __enter__(self) -> "RawVideoStream":
+    def __enter__(self) -> RawVideoStream:
         return self
 
     def __exit__(self, exc_type, exc, tb) -> None:

@@ -15,29 +15,23 @@ import asyncio
 import json
 import logging
 import os
-import subprocess
 import sys
 import tempfile
-import uuid
-from concurrent import futures
 from contextlib import asynccontextmanager
 from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import Any
 
-from fastapi import FastAPI, WebSocket, WebSocketDisconnect, Request
+from fastapi import FastAPI, Request, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import HTMLResponse, JSONResponse, StreamingResponse
+from fastapi.responses import HTMLResponse, StreamingResponse
 from pydantic import BaseModel, Field
 
-from omniframe.core.agent_runtime.registry import get_registry, ActionRegistry
+from omniframe.bridges import get_bridge, list_bridges
 from omniframe.core.agent_runtime.actions import register_builtin_actions
-from omniframe.core.config import detect_environment, get_config
-from omniframe.engines.code_video import render_scene, CodeScene, CodeVideoRenderer
-from omniframe.engines.cartoon_2d import render_frames, CartoonScene
-from omniframe.engines.compositor import Compositor
-from omniframe.bridges import list_bridges, get_bridge
-from omniframe.core.timeline_schema.io import load_project, load_document
+from omniframe.core.agent_runtime.registry import ActionRegistry, get_registry
+from omniframe.core.config import detect_environment
 from omniframe.core.errors import OmniFrameError
+from omniframe.core.timeline_schema.io import load_project
 from omniframe.updater import (
     check_for_update,
     get_cached_update_advisory,
@@ -55,7 +49,7 @@ _handler.setFormatter(
 LOG.addHandler(_handler)
 
 # ── Global state ──────────────────────────────────────────────────────────
-agent_registry: Optional[ActionRegistry] = None
+agent_registry: ActionRegistry | None = None
 agent_task_log: asyncio.Queue = asyncio.Queue()  # WebSocket broadcast queue
 active_connections: set[WebSocket] = set()
 
@@ -64,18 +58,18 @@ active_connections: set[WebSocket] = set()
 
 class ActionInput(BaseModel):
     action: str = Field(..., description="Action name, e.g. render.code_scene")
-    parameters: Dict[str, Any] = Field(
+    parameters: dict[str, Any] = Field(
         default_factory=dict, description="JSON-compatible action parameters"
     )
 
 
 class ActionOutput(BaseModel):
     success: bool = True
-    result: Optional[Any] = None
-    error: Optional[str] = None
-    error_code: Optional[str] = None
+    result: Any | None = None
+    error: str | None = None
+    error_code: str | None = None
     update_available: bool = False
-    update_info: Optional[Dict[str, Any]] = None
+    update_info: dict[str, Any] | None = None
 
     def model_post_init(self, __context: Any) -> None:
         if self.update_info is None:
@@ -148,7 +142,7 @@ def create_app() -> FastAPI:
     # ── Health ─────────────────────────────────────────────────────────────
 
     @app.get("/health", include_in_schema=False)
-    async def health() -> Dict[str, str]:
+    async def health() -> dict[str, str]:
         return {"status": "ok", "version": "0.1.0"}
 
     # ── Action execution ───────────────────────────────────────────────────
@@ -191,7 +185,7 @@ def create_app() -> FastAPI:
         """Validate an OmniProject document."""
         try:
             doc = load_project(payload.project_path)
-            from omniframe.core.timeline_schema.validate import validate_project, summarize
+            from omniframe.core.timeline_schema.validate import summarize, validate_project
 
             issues = validate_project(doc)
             summary = summarize(issues)
@@ -214,7 +208,7 @@ def create_app() -> FastAPI:
             from omniframe.cli.main import run as cli_runner
 
             # Use CLI render subcommand
-            result = cli_runner(
+            cli_runner(
                 ["project", "render", payload.project_path, "--out", "/tmp/omniframe_render"]
             )
             return ActionOutput(

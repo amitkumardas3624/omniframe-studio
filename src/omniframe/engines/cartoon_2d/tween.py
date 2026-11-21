@@ -41,7 +41,7 @@ class Easing:
 
     # -- construction ---------------------------------------------------
     @classmethod
-    def from_value(cls, value: Any) -> "Easing":
+    def from_value(cls, value: Any) -> Easing:
         """Build an easing from a string, a mapping or an ``Easing``.
 
         Objects that merely expose a ``kind`` attribute are accepted too, so a

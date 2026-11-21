@@ -7,7 +7,6 @@ from typer.testing import CliRunner
 import omniframe.cli.main as cli
 import omniframe.mcp_server as mcp
 
-
 runner = CliRunner()
 
 

@@ -21,7 +21,7 @@ def test_fallback_frame_sink_writes_rgba_png(tmp_path):
 
 
 def test_native_request_fails_actionably_when_unavailable(tmp_path):
-    from omniframe._native import native_available, get_frame_sink
+    from omniframe._native import get_frame_sink, native_available
     from omniframe.core.errors import EngineUnavailable
 
     if native_available():
