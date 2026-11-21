@@ -484,14 +484,14 @@ extra and Chromium, `doctor --json` reports **`ready: true`**.
 ### CI on a hosted runner — and the defects it exposed
 
 This release is the first time the workflow ran on a real GitHub runner, so the "never executed on a
-hosted runner" limitation is now closed. During the 0.2.0 work it ran **nine** times: twice before the
-tag, seven times from the tag onward. Three defects had to be fixed on the way, none of them visible
-locally, and two of them real bugs in the library.
+hosted runner" limitation is now closed — but the workflow's first contact with a runner was not the
+release tag. It was `a330be2`, two pushes earlier, which is why that row is in the table below as well:
+`install` 6/6 and `wheel` were green there too, and `test` was already red on all three versions with
+the same collection error the tag then carried.
 
-The two hosted runs *before* the tag matter to the claim, so they are in the table: `install` 6/6 and
-`wheel` were green there too, and `test` was red on all three versions with the same collection error
-the tag then carried. In other words the tag was not the workflow's first contact with a runner, and
-the "never ran on a hosted runner" debt was already closed when it was cut.
+Three defects had to be fixed on the way, none of them visible locally, and two of them real bugs in
+the library. The table lists every hosted run through `a036a67`, the docs commit that first wrote this
+section down; no row was dropped to make the sequence look better.
 
 **Defect 1 — two test modules imported the optional UI framework unguarded** (`491a427`). On the
 tagged commit `f7626db`:
