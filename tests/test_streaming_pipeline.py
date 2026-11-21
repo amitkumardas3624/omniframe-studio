@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import io
 import json
 import shutil
 import subprocess
@@ -9,6 +10,7 @@ import pytest
 from omniframe.core.errors import ValidationError
 from omniframe.engines.cartoon_2d import CartoonScene, Layer, render_frames
 from omniframe.engines.code_video import CodeScene, CodeVideoRenderer
+from omniframe.engines.compositor import raw_stream
 from omniframe.engines.compositor.raw_stream import stream_rgba_frames
 
 
@@ -75,6 +77,40 @@ def test_renderer_streaming_resume_fails_closed(tmp_path):
             resume=True,
             stream_to_ffmpeg=tmp_path / "rendered.mp4",
         )
+
+
+class _FlushingFakeProcess:
+    """Minimal Popen stand-in that flushes ``stdin`` exactly like communicate()."""
+
+    def __init__(self) -> None:
+        self.stdin = io.BytesIO()
+        self.returncode: int | None = None
+        self.communicate_calls = 0
+
+    def communicate(self, timeout=None):  # noqa: ANN001, ANN201
+        self.communicate_calls += 1
+        # CPython's subprocess.Popen._communicate flushes the stdin file object
+        # before waiting; flushing an already-closed handle raises ValueError.
+        if self.stdin is not None:
+            self.stdin.flush()
+        self.returncode = 0
+        return None, b""
+
+    def kill(self) -> None:
+        self.returncode = -9
+
+
+def test_close_detaches_stdin_before_communicate(monkeypatch, tmp_path):
+    fake = _FlushingFakeProcess()
+    monkeypatch.setattr(raw_stream, "ffmpeg_binary", lambda: "ffmpeg")
+    monkeypatch.setattr(raw_stream.subprocess, "Popen", lambda *args, **kwargs: fake)
+
+    with raw_stream.RawVideoStream(tmp_path / "out.mp4", width=2, height=2, fps=2) as stream:
+        for index in range(3):
+            stream.write(bytes([index, 0, 0, 255]) * 4)
+
+    assert fake.communicate_calls == 1
+    assert fake.stdin is None
 
 
 def test_cartoon_streams_without_png_frames(tmp_path):

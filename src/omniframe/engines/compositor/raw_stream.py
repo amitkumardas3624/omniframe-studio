@@ -94,17 +94,27 @@ class RawVideoStream:
         if self._closed:
             return
         self._closed = True
-        if self._process.stdin is not None:
+        process = self._process
+        stdin = process.stdin
+        if stdin is not None:
+            # Closing the pipe is what tells FFmpeg that the frame stream ended.
             try:
-                self._process.stdin.close()
+                stdin.close()
             except OSError:
                 pass
+            finally:
+                # Popen.communicate() flushes Popen.stdin before waiting. On
+                # POSIX that flush runs after our close and raises
+                # "ValueError: flush of closed file", so the encoder's exit
+                # status is never collected. Detaching the handle keeps the
+                # EOF we just sent while sparing communicate() a closed file.
+                process.stdin = None
         try:
-            _stdout, stderr = self._process.communicate(timeout=self.timeout)
-            returncode = self._process.returncode
+            _stdout, stderr = process.communicate(timeout=self.timeout)
+            returncode = process.returncode
         except subprocess.TimeoutExpired as exc:
-            self._process.kill()
-            _stdout, stderr = self._process.communicate(timeout=10)
+            process.kill()
+            _stdout, stderr = process.communicate(timeout=10)
             raise RenderError(
                 f"ffmpeg streaming timed out after {self.timeout:g}s.",
                 argv=self.argv,
