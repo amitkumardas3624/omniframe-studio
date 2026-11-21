@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "omniframe-studio"
-version = "0.2.0"
+version = "0.2.1"
 description = "Open-source, agent-first platform for code-driven, 2D cartoon and DCC-bridged video production."
 readme = "README.md"
 requires-python = ">=3.10"
