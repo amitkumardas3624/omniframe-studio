@@ -485,13 +485,15 @@ extra and Chromium, `doctor --json` reports **`ready: true`**.
 
 This release is the first time the workflow ran on a real GitHub runner, so the "never executed on a
 hosted runner" limitation is now closed — but the workflow's first contact with a runner was not the
-release tag. It was `a330be2`, two pushes earlier, which is why that row is in the table below as well:
-`install` 6/6 and `wheel` were green there too, and `test` was already red on all three versions with
-the same collection error the tag then carried.
+release tag. It was `e430266`, the hardening commit itself: run `44937427922` gave `install` 6/6 and
+`wheel` green, and `test` red on all three versions with the collection error the tag still carried
+forty minutes later. The two pushes between it and the tag (`a330be2`, `b2376dd`) failed the same way.
 
 Three defects had to be fixed on the way, none of them visible locally, and two of them real bugs in
-the library. The table lists every hosted run through `a036a67`, the docs commit that first wrote this
-section down; no row was dropped to make the sequence look better.
+the library. The table below is every `CI` run this repository has had, in order, through the `0.2.1`
+release commit `1562cdf`; no row was dropped to make the sequence look better. The repository also has
+one `Dependency Graph` run, `44946942008` on `4ebc7ea` — a Dependabot housekeeping job that runs none of
+these jobs, so it is named here rather than tabulated.
 
 **Defect 1 — two test modules imported the optional UI framework unguarded** (`491a427`). On the
 tagged commit `f7626db`:
@@ -563,8 +565,10 @@ The HTTP surface had answered 200 with `canceled`; polling the same job returned
 not a test-ordering complaint — it is a lifecycle race in `JobManager`. `cancel()` wrote `canceled`
 with no coordination with the worker, and the worker's "no registered callable" path wrote `failed`
 without ever consulting the cancel flag. Whoever wrote last won, so a job the caller had withdrawn
-could be resurrected as a queue malfunction. The same commit passed in a second run
-(`44946942008`), which is what a race looks like when it is reported as flaky.
+could be resurrected as a queue malfunction. That run is the shape of the evidence, not a red-green
+pair: `44945420622` failed, and it failed on 3.10 alone while 3.11 and 3.12 passed the same tests from
+the same commit. The targeted test then failed in 4 of 5 local runs against the pre-fix code, and has
+not failed once since, which is the part that makes it a race rather than a 3.10 quirk.
 
 Lifecycle writes now share one lock: `cancel()` sets the flag and records `canceled` under it, the
 claim (read + `running`) runs under it, and both terminal paths re-check the flag before recording
@@ -576,27 +580,40 @@ after the fix it has not failed once.
 
 | Run | Commit | `install` | `wheel` | `test` |
 |---|---|---|---|---|
-| `44938110155` | `a330be2` (before the tag) | 6/6 | pass | fail — `fastapi` collection error, ×3 |
+| `44937427922` | `e430266` (the hardening commit) | 6/6 | pass | fail — `fastapi` collection error, ×3 |
+| `44938110155` | `a330be2` (before the tag) | 6/6 | pass | fail — same error, ×3 |
 | `44938278540` | `b2376dd` (before the tag) | 6/6 | pass | fail — same error, ×3 |
 | `44941271851` | `f7626db` (the tag) | 6/6 | pass | fail — `fastapi` collection error, ×3 |
 | `44942289090` | `491a427` | 6/6 | pass | fail — 10 tests, ×3 |
 | `44942830309` | `5bdd203` | 6/6 | pass | fail — closed stdin, ×3 |
 | `44945420622` | `4ebc7ea` | 6/6 | pass | fail — cancel race, 3.10 only |
-| `44946942008` | `4ebc7ea` | 6/6 | pass | pass — same commit, race won |
 | `44947420899` | `a87057b` | 6/6 | pass | **pass ×3** |
 | `44949858877` | `a036a67` (docs) | 6/6 | pass | **pass ×3** |
+| `44951268237` | `22629c9` (docs) | 6/6 | pass | **pass ×3** |
+| `44957685418` | `1562cdf` (**the `v0.2.1` release commit**) | 6/6 | pass | **pass ×3** |
 
-The `a87057b` row is the gate: all ten jobs success, on 3.10, 3.11 and 3.12. The row below it is the
-same ten jobs for the docs commit that introduced this section — a docs-only push, so it confirms
-rather than assumes that recording the history did not disturb the suite.
+The `a87057b` row is the gate: all ten jobs success, on 3.10, 3.11 and 3.12. The three rows after it
+are the same ten jobs for the docs commits and then for the `0.2.1` release commit — docs-only and
+version-bump pushes, so they confirm rather than assume that recording the history and raising the
+version did not disturb the suite. The last row is the one the `v0.2.1` release rests on, and it was
+green *before* the release was published.
 
 **What the published artifacts contain.** The `v0.2.0` tag points at `f7626db`, so the published
 wheel and sdist carry the pre-fix form of both library defects above: a streamed render on POSIX
 raises `ValueError: flush of closed file` instead of returning, and a canceled queued job can be
 overwritten as `failed` by the worker. Both fixes are on `master` after the tag (`4ebc7ea`,
-`a87057b`) and belong in the next release. The sdist additionally ships the two test modules in
+`a87057b`) and shipped in the next release. The sdist additionally ships the two test modules in
 their `fastapi`-unguarded form. The tag's own release notes stay as written — they describe what was
 verified at `f7626db` — but nothing should cite this tag as a CI-verified build.
+
+**Superseded the same day by `v0.2.1`.** That release points at `1562cdf`, the commit that raised
+the version to `0.2.1`, and its artifacts are built from the fixed tree: both the wheel and the
+sdist carry the `4ebc7ea` and `a87057b` changes (`process.stdin = None` in `raw_stream.py`, the
+lifecycle lock in `jobs/manager.py`), and the sdist contains both test modules with the `fastapi`
+guard in place. The matrix was green on that commit (`44957685418`, 10/10) *before* the release was
+published, which is the part `v0.2.0` got wrong. Release page:
+<https://github.com/amitkumardas3624/omniframe-studio/releases/tag/v0.2.1>. The `v0.2.0`
+artifacts stay published as the record of what was actually built at `f7626db`; install `0.2.1`.
 
 ---
 
@@ -644,21 +661,19 @@ python -m omniframe.cli doctor --json
 ## Next
 
 Phase 0–5 gates all pass on engineering scope, the repository-identity question is resolved (canonical
-source named by the user on 2026-11-22 and propagated to every surface), `0.2.0` is tagged and published,
-and the workflow has now run on a hosted runner with all ten jobs green at `a87057b`.
+source named by the user on 2026-11-22 and propagated to every surface), `0.2.0` found two library
+defects that `0.2.1` ships fixed, and the workflow has now run on a hosted runner with all ten jobs
+green at `a87057b` and again at `1562cdf` (`44957685418`, the `0.2.1` release commit, green before the
+release was published).
 
-What that hosted run changed about "what remains": a real sdist is no longer unproven, and CI is no
-longer only static evidence — but it also found two shipped defects, so the next release is not
-optional housekeeping:
+What the hosted runs changed about "what remains": a real sdist is no longer unproven, CI is no
+longer only static evidence, and the two defects CI surfaced are now shipped fixed rather than
+described. What is left is verification this session could not perform:
 
-1. **`0.2.1` should ship `4ebc7ea` and `a87057b`.** The `v0.2.0` artifacts on the release page contain both
-   library defects described above. They are fixed on `master`; cutting a release is what puts the
-   fixes in front of anyone installing from PyPI or from the GitHub release page, and it is the only
-   honest way to stop the "CI-verified" claim from being attached to an artifact that is not.
-2. **Verify a DCC host.** `import_tested` is still 0 and `production_candidate` still 0 for every
+1. **Verify a DCC host.** `import_tested` is still 0 and `production_candidate` still 0 for every
    bridge; until one host is actually launched against the bridge entry points, those numbers stay
    where they are and this report keeps saying so.
-3. **Run the security scan.** The Aikido scan is still a gap (item 7 above), recorded rather than
+2. **Run the security scan.** The Aikido scan is still a gap (item 7 above), recorded rather than
    assumed clean.
 
 Full proprietary application cloning remains explicitly out of scope.
