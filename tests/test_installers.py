@@ -36,6 +36,7 @@ LIVE_SURFACES = (
     "install.ps1",
     "README.md",
     "SKILL.md",
+    "references/install-update.md",
     "pyproject.toml",
     "src/omniframe/updater.py",
     "src/omniframe/backend/server.py",

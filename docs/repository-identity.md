@@ -60,10 +60,17 @@ force push** — the old slug was the same project under the old username, not a
 | `src/omniframe/backend/server.py` | fallback "Web UI not yet built" link |
 | `tests/test_installers.py` | assertions updated, plus a new drift guard |
 
+> 2026-11-24: the install/update/UI/MCP detail was later split out of `SKILL.md`
+> into `references/install-update.md` (the root file is now the agent-facing
+> skill). The canonical URL stayed in `SKILL.md`, and the drift guard below was
+> extended to cover the new reference file, so the identity check still reaches
+> every surface that publishes the install one-liners.
+
 ## Guard added
 
 `tests/test_installers.py` now fails if any live surface
-(`install.sh`, `install.ps1`, `README.md`, `SKILL.md`, `pyproject.toml`,
+(`install.sh`, `install.ps1`, `README.md`, `SKILL.md`, `references/install-update.md`,
+`pyproject.toml`,
 `src/omniframe/updater.py`, `src/omniframe/backend/server.py`) contains a stale slug
 (`gbd718106-cmyk/omniframe-studio` or `omniframe-studio/omniframe-studio`) or omits the
 canonical one, and a second test asserts the `Documentation` URL still points at
