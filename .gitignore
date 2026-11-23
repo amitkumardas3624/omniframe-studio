@@ -24,6 +24,7 @@ out/
 renders/
 examples/omniframe-promo/output*/
 examples/handwashing-2d/output*/
+examples/showreel/output*/
 *.mp4
 *.omniframe.json
 

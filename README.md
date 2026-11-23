@@ -1,3 +1,7 @@
+![OmniFrame Studio — 15-second motion showreel rendered by the platform itself](docs/media/omniframe-showreel.gif)
+
+*Fifteen seconds, rendered end to end by OmniFrame Studio: one HTML code scene at 1920x1080, 2700 frames through Playwright, motion blur from three blended subframes, and a soundtrack synthesised in the browser with the Web Audio API. The scene and the build script live in [`examples/showreel/`](examples/showreel/).*
+
 # OmniFrame Studio
 
 OmniFrame Studio is an open-source, agent-first video and animation control platform. It combines deterministic HTML/CSS/JS frame rendering, a Pillow-based 2D cartoon pipeline, FFmpeg composition, timeline translation, visual inspection, checkpoints, and bridges for Premiere Pro, After Effects, DaVinci Resolve, CapCut, and Krita.
