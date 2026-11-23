@@ -53,7 +53,7 @@ Translator names: `fcpxml`, `edl`, `capcut_draft`, `ae_manifest`, `resolve_xml`.
 
 **Step 4. Build or edit.** Start from the closest folder in `examples/` (`code-explainer`, `cartoon-bounce`, `full-studio-demo`, `handwashing-2d`, `omniframe-promo`) or `project init`, not a blank file. Then run `project validate --json`. Fix every error before moving on.
 
-**Step 5. Preview first, full render second.** Make a copy of the project JSON with smaller `meta.width` / `meta.height` and a shorter clip (use `inspect timeline --json` to find the exact duration fields). Render and compose that copy first. Only then render the real project.
+**Step 5. Preview first, full render second.** Copy the project JSON; set `meta.width` / `meta.height` to half, and `meta.duration_frames` to a few seconds. If a clip still runs past the new end, clamp its `start_frame` + `duration_frames`. Render and compose that copy first. Only then render the real project.
 
 **Step 6. Look at it.** Run `inspect media` on the composed video, then actually open the contact sheet and several extracted frames as images. Judge them against the Finish Gate.
 
