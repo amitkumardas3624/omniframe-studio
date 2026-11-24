@@ -1,0 +1,88 @@
+{
+  "schema": "omniframe.blueprint/1",
+  "source": {
+    "kind": "video",
+    "ref": "video.eb2ddbff.mp4",
+    "sha256": "eb2ddbff09563c739d8b9681ddc59dc366cc9c185ec02fad70fb391659ba9397",
+    "duration_s": 15.0,
+    "fps": 60,
+    "size": [1920, 1080],
+    "probed": "ffprobe + Pillow frame sampling + videos_understand Q&A"
+  },
+  "palette": {
+    "bg": "#0B0A0F",
+    "fg": "#F1EDE3",
+    "muted": "#8A8F98",
+    "accent": ["#FF5722", "#155EEF"],
+    "color_count": 3,
+    "contrast_min": 4.5,
+    "gradient": "linear-ribbon"
+  },
+  "type": {
+    "families": ["geometric-sans", "editorial-serif", "mono"],
+    "max_families": 3,
+    "roles": {
+      "display": { "size_pct": 9.2, "weight": "black", "case": "lower", "tracking": -0.04 },
+      "accent": { "size_pct": 7.4, "weight": "italic", "case": "lower", "tracking": -0.02 },
+      "body": { "size_pct": 1.7, "weight": "normal", "case": "upper", "tracking": 0.12 }
+    },
+    "min_size_pct": 1.5,
+    "max_words_display": 4,
+    "max_words_body": 7
+  },
+  "motion": {
+    "ease": {
+      "enter": "out_expo",
+      "exit": "in_cubic",
+      "move": "in_out_quart",
+      "emphasis": "out_back"
+    },
+    "spring": { "stiffness": 180, "damping": 26 },
+    "stagger_ms": 40,
+    "blur_speed_px_s": 900,
+    "hold_max_ms": 500
+  },
+  "camera": {
+    "push_per_scene": 1.04,
+    "dolly": "log",
+    "tilt_deg": 56,
+    "focal_px": 1880,
+    "dof_front": 75,
+    "dof_behind": 60,
+    "dof_cap_px": 120,
+    "parallax_depth": [0.3, 1.6]
+  },
+  "transitions": [
+    { "type": "match", "share": 0.5 },
+    { "type": "mask", "share": 0.3 },
+    { "type": "zoom", "share": 0.2 }
+  ],
+  "pacing": {
+    "cuts_per_10s": 5.3,
+    "shot_median_s": 2.0,
+    "hold_max_s": 0.5,
+    "peak_at": 0.87,
+    "dead_time_max_ms": 400
+  },
+  "rhythm": {
+    "bpm": 128.57,
+    "grid": "1/16",
+    "downbeat_offset_s": 0.0,
+    "cue_density_per_beat": 0.7
+  },
+  "composition": {
+    "safe_area": [0.05, 0.05, 0.95, 0.95],
+    "horizon": 0.62,
+    "density_mean": 0.22
+  },
+  "sound": { "genre": "glitch-electronic", "lufs": -14, "duck_db": -15 },
+  "confidence": {
+    "palette": 0.95,
+    "type": 0.75,
+    "ease": 0.5,
+    "camera": 0.6,
+    "pacing": 0.9,
+    "rhythm": 0.85,
+    "sound": 0.5
+  }
+}

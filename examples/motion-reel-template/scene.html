@@ -1,0 +1,143 @@
+<html data-composition-variables='{"brand":"CLAUDE","reel":"MOTION REEL &apos;26","principle":"principles first.","words":"SPACING|EASING|RHYTHM","note":"// easeOutBack(2.2)","particleWord":"FLOW","panelTitle":"reel_v26 — performance","m1":"892","m1Label":"FRAMES RENDERED","m2":"59","m2Label":"FRAMES / SECOND","m3":"55","m3Label":"KEYFRAMES USED","ringValue":"84%","flowTop":"everything","flowBottom":"moves.","status":"available for hire.","accent":"#FF5722","blue":"#155EEF","bgDark":"#0B0A0F","bgLight":"#F1EDE3","fgDark":"#111318","muted":"#8A8F98"}'>
+<head>
+<style>
+*{box-sizing:border-box}
+html,body{margin:0;padding:0;width:100%;height:100%;overflow:hidden;background:var(--bgDark);color:var(--bgLight)}
+#stage{position:absolute;inset:0;overflow:hidden}
+.chapter{position:absolute;inset:0;display:none;overflow:hidden}
+.chapter.light{background:var(--bgLight);color:var(--fgDark)}
+.mono{font-family:'Courier New',Courier,monospace;letter-spacing:.12em;font-size:17px}
+.hud{position:absolute;inset:0;pointer-events:none;z-index:20}
+.br{position:absolute;width:46px;height:46px;border:2px solid var(--muted);opacity:.8}
+.b1{top:38px;left:38px;border-right:0;border-bottom:0}
+.b2{top:38px;right:38px;border-left:0;border-bottom:0}
+.b3{bottom:38px;left:38px;border-right:0;border-top:0}
+.b4{bottom:38px;right:38px;border-left:0;border-top:0}
+#hudTL{position:absolute;top:42px;left:100px}
+#hudTR{position:absolute;top:42px;right:100px}
+#hudBL{position:absolute;bottom:42px;left:100px}
+#hudBR{position:absolute;bottom:42px;right:100px}
+#progress{position:absolute;bottom:34px;right:100px;width:170px;height:2px;background:rgba(255,255,255,.25)}
+#progressFill{height:100%;background:var(--bgLight);width:0}
+#grain{position:absolute;inset:0;opacity:.05;pointer-events:none;z-index:19;filter:url(#grainFilter);background:#fff}
+
+#baseline{position:absolute;left:12%;right:12%;top:66%;height:1px;background:rgba(255,255,255,.28)}
+#ticks i{position:absolute;top:66%;width:1px;height:14px;background:rgba(255,255,255,.3)}
+#ball{position:absolute;width:112px;height:112px;border-radius:50%;background:var(--accent);left:50%;top:50%;transform:translate(-50%,-50%)}
+#introSub{position:absolute;left:0;right:0;top:73%;text-align:center;color:var(--muted)}
+
+.ghost{position:absolute;left:-2%;right:-2%;text-align:center;font-family:Arial,Helvetica,sans-serif;font-size:150px;font-weight:900;color:transparent;-webkit-text-stroke:1.5px rgba(17,19,24,.12);white-space:nowrap;overflow:hidden}
+.ghostTop{top:-3%}
+.ghostBottom{bottom:-3%}
+#typeword{position:absolute;left:50%;top:48%;transform:translate(-50%,-50%);font-family:Arial,Helvetica,sans-serif;font-weight:900;font-size:190px;letter-spacing:-.06em;color:var(--blue);white-space:nowrap}
+#typeNote{position:absolute;left:0;right:0;top:70%;text-align:center;color:var(--blue);font-family:'Courier New',monospace;font-size:20px}
+
+.ring{position:absolute;left:50%;top:50%;border:3px solid var(--accent);border-radius:14%;opacity:.75}
+.cross{position:absolute;font-family:'Courier New',monospace;font-size:40px;color:var(--accent);opacity:.8}
+
+#flowword{position:absolute;left:0;right:0;top:44%;text-align:center;font-family:Arial,Helvetica,sans-serif;font-weight:900;font-size:170px;letter-spacing:.08em;color:var(--bgLight)}
+.dot{position:absolute;width:5px;height:5px;border-radius:50%;background:var(--accent);opacity:.85}
+
+#floor{position:absolute;left:-25%;right:-25%;top:56%;height:90%;background-image:repeating-linear-gradient(90deg,rgba(21,94,239,.35) 0 1px,transparent 1px 96px),repeating-linear-gradient(0deg,rgba(21,94,239,.35) 0 1px,transparent 1px 74px);transform:perspective(900px) rotateX(68deg);transform-origin:top center}
+#sphere{position:absolute;left:50%;top:36%;width:340px;height:340px;transform:translate(-50%,-50%)}
+
+.metric{position:absolute;left:8%}
+.metric b{display:block;font-family:Arial,Helvetica,sans-serif;font-weight:900;font-size:128px;line-height:1}
+.metric span{font-family:'Courier New',monospace;font-size:16px;letter-spacing:.16em;color:var(--muted)}
+#m1{top:16%}
+#m2{top:42%}
+#m3{top:68%}
+#m3 b{color:var(--accent)}
+#panel{position:absolute;right:7%;top:17%;width:46%;height:66%;background:#fff;border-radius:26px;box-shadow:0 30px 80px rgba(0,0,0,.12);padding:40px}
+#panelTitle{font-family:Arial,Helvetica,sans-serif;font-weight:800;font-size:26px}
+#live{display:inline-block;margin-top:14px;background:#FFE8E0;color:var(--accent);border-radius:20px;padding:5px 14px;font:700 13px 'Courier New',monospace}
+#ring{position:absolute;right:40px;top:36px;width:84px;height:84px;border-radius:50%;background:conic-gradient(var(--blue) 0 84%,#E6E8EF 84% 100%);display:grid;place-items:center}
+#ring span{width:64px;height:64px;border-radius:50%;background:#fff;display:grid;place-items:center;font:800 18px Arial,sans-serif}
+#chart{position:absolute;left:40px;right:40px;bottom:56px;height:210px;display:flex;align-items:flex-end;gap:12px}
+#chart i{flex:1;background:var(--accent);opacity:.85;border-radius:5px 5px 0 0;height:20%}
+
+#ribbons{position:absolute;inset:0;width:100%;height:100%}
+#ribbons path{fill:none;stroke-width:1.4}
+#flowTop{position:absolute;left:0;right:0;top:30%;text-align:center;font-family:Georgia,'Times New Roman',serif;font-style:italic;font-size:180px;color:var(--bgLight)}
+#flowBottom{position:absolute;left:0;right:0;top:54%;text-align:center;font-family:Georgia,'Times New Roman',serif;font-style:italic;font-size:170px;color:var(--accent)}
+
+#lockup{position:absolute;left:50%;top:44%;transform:translate(-50%,-50%);white-space:nowrap}
+#brandName{font-family:Arial,Helvetica,sans-serif;font-weight:900;font-size:220px;letter-spacing:-.07em;color:var(--bgLight)}
+#brandDot{color:var(--accent)}
+#outroRule{position:absolute;left:26%;right:26%;top:61%;height:1px;background:rgba(255,255,255,.25)}
+#statusLine{position:absolute;left:0;right:0;top:65%;text-align:center;color:var(--accent);font-family:'Courier New',monospace;font-size:20px;letter-spacing:.18em}
+</style>
+</head>
+<body>
+<svg width="0" height="0" aria-hidden="true"><filter id="grainFilter"><feTurbulence type="fractalNoise" baseFrequency="0.85" numOctaves="3" seed="7" stitchTiles="stitch"/><feColorMatrix type="saturate" values="0"/></filter></svg>
+<div id="stage">
+
+  <div class="chapter" id="ch0" data-track="ch0" data-start="0" data-duration="2">
+    <div id="baseline"></div>
+    <div id="ticks"></div>
+    <div id="ball"></div>
+    <div id="introSub" class="mono" data-var="principle"></div>
+  </div>
+
+  <div class="chapter light" id="ch1" data-track="ch1" data-start="2" data-duration="2">
+    <div class="ghost ghostTop" id="ghostTop"></div>
+    <div id="typeword"></div>
+    <div id="typeNote" class="mono" data-var="note"></div>
+    <div class="ghost ghostBottom" id="ghostBottom"></div>
+  </div>
+
+  <div class="chapter" id="ch2" data-track="ch2" data-start="4" data-duration="2">
+    <div class="ring"></div><div class="ring"></div><div class="ring"></div><div class="ring"></div><div class="ring"></div>
+    <b class="cross">+</b><b class="cross">+</b><b class="cross">+</b><b class="cross">+</b>
+    <b class="cross">+</b><b class="cross">+</b><b class="cross">+</b><b class="cross">+</b>
+  </div>
+
+  <div class="chapter" id="ch3" data-track="ch3" data-start="6" data-duration="1.5">
+    <div id="flowword" data-var="particleWord"></div>
+    <div id="dots"></div>
+  </div>
+
+  <div class="chapter" id="ch4" data-track="ch4" data-start="7.5" data-duration="1.5">
+    <div id="floor"></div>
+    <div id="sphere"></div>
+  </div>
+
+  <div class="chapter light" id="ch5" data-track="ch5" data-start="9" data-duration="2">
+    <div class="metric" id="m1"><b data-var="m1"></b><span data-var="m1Label"></span></div>
+    <div class="metric" id="m2"><b data-var="m2"></b><span data-var="m2Label"></span></div>
+    <div class="metric" id="m3"><b data-var="m3"></b><span data-var="m3Label"></span></div>
+    <div id="panel">
+      <div id="panelTitle" data-var="panelTitle"></div><div id="live">LIVE</div>
+      <div id="ring"><span data-var="ringValue"></span></div>
+      <div id="chart"><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div>
+    </div>
+  </div>
+
+  <div class="chapter" id="ch6" data-track="ch6" data-start="11" data-duration="2">
+    <svg id="ribbons" viewBox="0 0 1920 1080" preserveAspectRatio="none">
+      <path id="r0" stroke="#FF5722"/><path id="r1" stroke="#FF5722"/>
+      <path id="r2" stroke="#FF5722"/><path id="r3" stroke="#155EEF"/>
+      <path id="r4" stroke="#155EEF"/><path id="r5" stroke="#155EEF"/>
+    </svg>
+    <div id="flowTop" data-var="flowTop"></div>
+    <div id="flowBottom" data-var="flowBottom"></div>
+  </div>
+
+  <div class="chapter" id="ch7" data-track="ch7" data-start="13" data-duration="2">
+    <div id="outroRule"></div>
+    <div id="lockup"><span id="brandName" data-var="brand"></span><span id="brandDot">.</span></div>
+    <div id="statusLine" class="mono" data-var="status"></div>
+  </div>
+
+  <div class="hud">
+    <div class="br b1"></div><div class="br b2"></div><div class="br b3"></div><div class="br b4"></div>
+    <div id="hudTL" class="mono"></div>
+    <div id="hudTR" class="mono"></div>
+    <div id="hudBL" class="mono"></div>
+    <div id="hudBR" class="mono"></div>
+    <div id="progress"><div id="progressFill"></div></div>
+  </div>
+  <div id="grain"></div>
+</div>
+</body>
+</html>
