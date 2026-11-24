@@ -23,26 +23,26 @@ All platform capabilities are exposed through the Typer CLI and can be invoked p
 - `omniframe project render <project.json> --out <dir>` — Render to PNG frame sequence
 - `omniframe project render <project.json> --stream-to-ffmpeg <video>` — Opt-in raw RGBA streaming for exactly one renderable clip; incompatible with `--resume`
 - `omniframe project compose <project.json> --frames <dir> --out <video.mp4>` — Assemble video from frames
-- `omniframe project translate --translator <format> <project.json> <output>` — Translate between formats (FCPXML, EDL, CapCut, AE, Resolve)
+- `omniframe project translate --translator <format> <project.json> --out <output>` — Translate between formats (FCPXML, EDL, CapCut, AE, Resolve)
 - `omniframe project report <project.json>` — Get structured timeline report
 
 #### Checkpoint & Rollback
 - `omniframe checkpoint save <project.json> --label <name>` — Snapshot project state
 - `omniframe checkpoint list` — List all stored checkpoints
-- `omniframe checkpoint restore <id> <project.json>` — Restore a checkpoint
-- `omniframe checkpoint diff <id1> <id2>` — Diff two checkpoints
+- `omniframe checkpoint restore <id> --project <project.json>` — Restore a checkpoint
+- `omniframe checkpoint diff <before> <after>` — Diff two checkpoints
 
 #### Bridge Automation
 - `omniframe bridge list` — List all DCC bridges and availability
 - `omniframe bridge detect <name>` — Detect if a host app is installed
-- `omniframe bridge generate_script <name> <project.json> <output_dir>` — Generate host script/project
+- `omniframe bridge script <name> <project.json> --out <output_dir>` — Generate host script/project
 
 #### Inspection & Visual Review
-- `omniframe inspect media <video.mp4> --output-dir <dir> --count <n> --contact-sheet <sheet.png>` — Extract frames + contact sheet
-- `omniframe inspect frames <directory> --output <sheet.png> --columns <n> --strip` — Build contact sheet from frames
+- `omniframe inspect media --video <video.mp4> --output-dir <dir> --count <n> --contact-sheet <sheet.png>` — Extract frames + contact sheet
+- `omniframe inspect frames --directory <directory> --output <sheet.png> --columns <n> --strip` — Build contact sheet from frames
 
 #### Engine Routing
-- `omniframe engine route --capability <name>` — Choose best engine for a task
+- `omniframe route --capability <name>` — Choose best engine for a task
 
 ### Python API
 ```python
@@ -126,5 +126,5 @@ Structured `OmniFrameError` hierarchy with stable `code` field for agent branchi
 - **Entry point**: `omniframe` CLI script (Typer-based)
 
 ## Versioning
-- Current: `0.1.0` (Alpha)
+- Current: `0.2.1` (Alpha)
 - See `pyproject.toml` for full package metadata

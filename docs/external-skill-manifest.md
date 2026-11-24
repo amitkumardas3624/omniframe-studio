@@ -138,8 +138,8 @@ as a rule the renderer can enforce rather than as advice:
 | Idea | Where it lands |
 |---|---|
 | A film is one through-line object under continuous transformation; a cut is a failure to transform | `SKILL.md` section 4 (P2), section 6A (Cuts) |
-| Time is quantised to `frame / fps`; nothing integrates, nothing accumulates | section 10, law 1 |
-| Motion blur is sampled from subframes and blended by velocity, not faked with a blur filter | section 10, law 4 |
+| Time is quantised to `frame / fps`; nothing integrates, nothing accumulates | section 9, law 1 (closed-form time); section 10, rule 2 (`t = frame / fps`) |
+| Motion blur is sampled from subframes and blended by velocity, not faked with a blur filter | section 9, law 4 (blur follows velocity) |
 | Look at one frame per beat before you pay for the whole render | section 11, the pre-render gate |
 
 The rest of the borrowed material (style catalogues, template lists) was

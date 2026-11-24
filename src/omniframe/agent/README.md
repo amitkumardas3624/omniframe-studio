@@ -24,7 +24,7 @@ omniframe project render examples/code-explainer/project.json --out out/explaine
 omniframe project compose examples/code-explainer/project.json --frames out/explainer/intro --out out/code-explainer.mp4
 
 # Inspect video frames
-omniframe inspect media out/cartoon-bounce.mp4 --output-dir out/_inspect --count 8 --contact-sheet out/_inspect/cartoon-sheet.png
+omniframe inspect media --video out/cartoon-bounce.mp4 --output-dir out/_inspect --count 8 --contact-sheet out/_inspect/cartoon-sheet.png
 ```
 
 ## Core Features
@@ -97,23 +97,25 @@ Bidirectional translators between OmniProject and host formats: FCPXML, EDL, Cap
 | `project validate <file>` | Validate OmniProject |
 | `project render <file> --out <dir>` | Render to PNG frames |
 | `project compose <file> --frames <dir> --out <video.mp4>` | Compose video from frames |
-| `project translate --translator <format> <file> <output>` | Translate formats |
+| `project translate --translator <format> <file> --out <output>` | Translate formats |
 | `project report <file>` | Structured timeline report |
 | `checkpoint save <file> --label <name>` | Snapshot project |
 | `checkpoint list` | List stored checkpoints |
-| `checkpoint restore <id> <file>` | Restore from checkpoint |
-| `checkpoint diff <id1> <id2>` | Diff two checkpoints |
+| `checkpoint restore <id> --project <file>` | Restore from checkpoint |
+| `checkpoint diff <before> <after>` | Diff two checkpoints |
 | `bridge list` | List DCC bridges and availability |
 | `bridge detect <name>` | Detect host app |
-| `bridge generate_script <name> <file> <dir>` | Generate host script |
+| `bridge script <name> <file> --out <dir>` | Generate host script |
 | `bridge inspect <name> <target>` | Read-only project inspection |
-| `engine route --capability <name>` | Choose best engine |
-| `inspect media <video> --output-dir <dir> --count <n> --contact-sheet <sheet.png>` | Extract frames + contact sheet |
-| `inspect frames <directory> --output <sheet.png> --columns <n> --strip` | Build contact sheet from frames |
+| `route --capability <name>` | Choose best engine |
+| `inspect media --video <video> --output-dir <dir> --count <n> --contact-sheet <sheet.png>` | Extract frames + contact sheet |
+| `inspect frames --directory <directory> --output <sheet.png> --columns <n> --strip` | Build contact sheet from frames |
 
 ### Global Options
 - `--help` — Show help for any command
-- `--version` — Show version (0.1.0)
+
+### Version
+- `omniframe version` — Print the installed version and Python version as JSON (there is no `--version` flag)
 
 ## Platform Stack
 
