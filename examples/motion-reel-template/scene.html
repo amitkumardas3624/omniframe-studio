@@ -1,4 +1,4 @@
-<html data-composition-variables='{"brand":"CLAUDE","reel":"MOTION REEL &apos;26","principle":"principles first.","words":"SPACING|EASING|RHYTHM","note":"// easeOutBack(2.2)","particleWord":"FLOW","panelTitle":"reel_v26 — performance","m1":"892","m1Label":"FRAMES RENDERED","m2":"59","m2Label":"FRAMES / SECOND","m3":"55","m3Label":"KEYFRAMES USED","ringValue":"84%","flowTop":"everything","flowBottom":"moves.","status":"available for hire.","accent":"#FF5722","blue":"#155EEF","bgDark":"#0B0A0F","bgLight":"#F1EDE3","fgDark":"#111318","muted":"#8A8F98"}'>
+<html data-composition-variables='{"brand":"CLAUDE","reel":"MOTION REEL &apos;26","principle":"principles first.","words":"SPACING|EASING|RHYTHM","note":"// easeOutBack(2.2)","particleWord":"FLOW","panelTitle":"reel_v26 — performance","m1":"892","m1Label":"FRAMES RENDERED","m2":"59","m2Label":"FRAMES / SECOND","m3":"55","m3Label":"KEYFRAMES USED","ringValue":"84%","flowTop":"everything","flowBottom":"moves.","status":"available for hire.","trackingNote":"// tracking 150 -> -6","outroMeta":"MOTION DESIGNER — Showreel% 01KZ","outroCaption":"TYPE • SYSTEMS • PARTICLES • 3D • DATA • FLOW","accent":"#FF5722","blue":"#155EEF","bgDark":"#0B0A0F","bgLight":"#F1EDE3","fgDark":"#111318","muted":"#8A8F98"}'>
 <head>
 <style>
 *{box-sizing:border-box}
@@ -26,20 +26,26 @@ html,body{margin:0;padding:0;width:100%;height:100%;overflow:hidden;background:v
 #ball{position:absolute;width:112px;height:112px;border-radius:50%;background:var(--accent);left:50%;top:50%;transform:translate(-50%,-50%)}
 #introSub{position:absolute;left:0;right:0;top:73%;text-align:center;color:var(--muted)}
 
-.ghost{position:absolute;left:-2%;right:-2%;text-align:center;font-family:Arial,Helvetica,sans-serif;font-size:150px;font-weight:900;color:transparent;-webkit-text-stroke:1.5px rgba(17,19,24,.12);white-space:nowrap;overflow:hidden}
-.ghostTop{top:-3%}
-.ghostBottom{bottom:-3%}
+.ghost{position:absolute;left:-6%;right:-6%;text-align:center;font-family:Arial,Helvetica,sans-serif;font-size:170px;font-weight:900;color:transparent;-webkit-text-stroke:1.5px rgba(17,19,24,.24);white-space:nowrap;overflow:hidden}
+.ghostTop{top:-4%}
+.ghostMid{top:43%;opacity:.35}
+.ghostBottom{bottom:-4%}
+#beatMarks{position:absolute;left:8%;right:8%;top:62%;height:18px}
+#beatMarks i{position:absolute;top:0;width:1px;height:12px;background:var(--blue);opacity:.45}
+#typeTrack{position:absolute;left:0;right:0;top:75%;text-align:center;color:var(--blue);font-family:'Courier New',monospace;font-size:18px}
 #typeword{position:absolute;left:50%;top:48%;transform:translate(-50%,-50%);font-family:Arial,Helvetica,sans-serif;font-weight:900;font-size:190px;letter-spacing:-.06em;color:var(--blue);white-space:nowrap}
 #typeNote{position:absolute;left:0;right:0;top:70%;text-align:center;color:var(--blue);font-family:'Courier New',monospace;font-size:20px}
 
+#sysGrid{position:absolute;inset:8%;background-image:radial-gradient(var(--accent) 1px,transparent 1px);background-size:56px 56px;opacity:.18}
 .ring{position:absolute;left:50%;top:50%;border:3px solid var(--accent);border-radius:14%;opacity:.75}
-.cross{position:absolute;font-family:'Courier New',monospace;font-size:40px;color:var(--accent);opacity:.8}
+.cross{position:absolute;font-family:'Courier New',monospace;font-size:38px;color:var(--accent);opacity:.8}
 
-#flowword{position:absolute;left:0;right:0;top:44%;text-align:center;font-family:Arial,Helvetica,sans-serif;font-weight:900;font-size:170px;letter-spacing:.08em;color:var(--bgLight)}
+.gdot{position:absolute;width:4px;height:4px;border-radius:50%;background:var(--bgLight);opacity:.9}
 .dot{position:absolute;width:5px;height:5px;border-radius:50%;background:var(--accent);opacity:.85}
 
 #floor{position:absolute;left:-25%;right:-25%;top:56%;height:90%;background-image:repeating-linear-gradient(90deg,rgba(21,94,239,.35) 0 1px,transparent 1px 96px),repeating-linear-gradient(0deg,rgba(21,94,239,.35) 0 1px,transparent 1px 74px);transform:perspective(900px) rotateX(68deg);transform-origin:top center}
-#sphere{position:absolute;left:50%;top:36%;width:340px;height:340px;transform:translate(-50%,-50%)}
+#sphere{position:absolute;inset:0}
+#sphere i{position:absolute;width:6px;height:6px;border-radius:50%;background:var(--blue)}
 
 .metric{position:absolute;left:8%}
 .metric b{display:block;font-family:Arial,Helvetica,sans-serif;font-weight:900;font-size:128px;line-height:1}
@@ -57,7 +63,7 @@ html,body{margin:0;padding:0;width:100%;height:100%;overflow:hidden;background:v
 #chart i{flex:1;background:var(--accent);opacity:.85;border-radius:5px 5px 0 0;height:20%}
 
 #ribbons{position:absolute;inset:0;width:100%;height:100%}
-#ribbons path{fill:none;stroke-width:1.4}
+#ribbons path{fill:none;stroke-width:1.1}
 #flowTop{position:absolute;left:0;right:0;top:30%;text-align:center;font-family:Georgia,'Times New Roman',serif;font-style:italic;font-size:180px;color:var(--bgLight)}
 #flowBottom{position:absolute;left:0;right:0;top:54%;text-align:center;font-family:Georgia,'Times New Roman',serif;font-style:italic;font-size:170px;color:var(--accent)}
 
@@ -66,6 +72,8 @@ html,body{margin:0;padding:0;width:100%;height:100%;overflow:hidden;background:v
 #brandDot{color:var(--accent)}
 #outroRule{position:absolute;left:26%;right:26%;top:61%;height:1px;background:rgba(255,255,255,.25)}
 #statusLine{position:absolute;left:0;right:0;top:65%;text-align:center;color:var(--accent);font-family:'Courier New',monospace;font-size:20px;letter-spacing:.18em}
+#outroMeta{position:absolute;left:0;right:0;top:69%;text-align:center;color:var(--muted);font-family:'Courier New',monospace;font-size:14px;letter-spacing:.16em}
+#outroCaption{position:absolute;left:0;right:0;top:73%;text-align:center;color:var(--bgLight);font-family:'Courier New',monospace;font-size:13px;letter-spacing:.2em;opacity:.7}
 </style>
 </head>
 <body>
@@ -81,19 +89,56 @@ html,body{margin:0;padding:0;width:100%;height:100%;overflow:hidden;background:v
 
   <div class="chapter light" id="ch1" data-track="ch1" data-start="2" data-duration="2">
     <div class="ghost ghostTop" id="ghostTop"></div>
+    <div class="ghost ghostMid" id="ghostMid"></div>
     <div id="typeword"></div>
+    <div id="beatMarks"></div>
     <div id="typeNote" class="mono" data-var="note"></div>
+    <div id="typeTrack" class="mono" data-var="trackingNote"></div>
     <div class="ghost ghostBottom" id="ghostBottom"></div>
   </div>
 
   <div class="chapter" id="ch2" data-track="ch2" data-start="4" data-duration="2">
-    <div class="ring"></div><div class="ring"></div><div class="ring"></div><div class="ring"></div><div class="ring"></div>
-    <b class="cross">+</b><b class="cross">+</b><b class="cross">+</b><b class="cross">+</b>
-    <b class="cross">+</b><b class="cross">+</b><b class="cross">+</b><b class="cross">+</b>
+    <div id="sysGrid"></div>
+    <div class="ring"></div>
+    <div class="ring"></div>
+    <div class="ring"></div>
+    <div class="ring"></div>
+    <div class="ring"></div>
+    <div class="ring"></div>
+    <div class="ring"></div>
+    <div class="ring"></div>
+    <div class="ring"></div>
+    <div class="ring"></div>
+    <div class="ring"></div>
+    <div class="ring"></div>
+    <b class="cross">+</b>
+    <b class="cross">+</b>
+    <b class="cross">+</b>
+    <b class="cross">+</b>
+    <b class="cross">+</b>
+    <b class="cross">+</b>
+    <b class="cross">+</b>
+    <b class="cross">+</b>
+    <b class="cross">+</b>
+    <b class="cross">+</b>
+    <b class="cross">+</b>
+    <b class="cross">+</b>
+    <b class="cross">+</b>
+    <b class="cross">+</b>
+    <b class="cross">+</b>
+    <b class="cross">+</b>
+    <b class="cross">+</b>
+    <b class="cross">+</b>
+    <b class="cross">+</b>
+    <b class="cross">+</b>
+    <b class="cross">+</b>
+    <b class="cross">+</b>
+    <b class="cross">+</b>
+    <b class="cross">+</b>
   </div>
 
   <div class="chapter" id="ch3" data-track="ch3" data-start="6" data-duration="1.5">
-    <div id="flowword" data-var="particleWord"></div>
+    <div id="glyphDots"></div>
     <div id="dots"></div>
   </div>
 
@@ -115,9 +160,26 @@ html,body{margin:0;padding:0;width:100%;height:100%;overflow:hidden;background:v
 
   <div class="chapter" id="ch6" data-track="ch6" data-start="11" data-duration="2">
     <svg id="ribbons" viewBox="0 0 1920 1080" preserveAspectRatio="none">
-      <path id="r0" stroke="#FF5722"/><path id="r1" stroke="#FF5722"/>
-      <path id="r2" stroke="#FF5722"/><path id="r3" stroke="#155EEF"/>
-      <path id="r4" stroke="#155EEF"/><path id="r5" stroke="#155EEF"/>
+      <path id="r0" stroke="#FF5722"/>
+      <path id="r1" stroke="#FF5722"/>
+      <path id="r2" stroke="#FF5722"/>
+      <path id="r3" stroke="#FF5722"/>
+      <path id="r4" stroke="#FF5722"/>
+      <path id="r5" stroke="#FF5722"/>
+      <path id="r6" stroke="#FF5722"/>
+      <path id="r7" stroke="#FF5722"/>
+      <path id="r8" stroke="#155EEF"/>
+      <path id="r9" stroke="#155EEF"/>
+      <path id="r10" stroke="#155EEF"/>
+      <path id="r11" stroke="#155EEF"/>
+      <path id="r12" stroke="#155EEF"/>
+      <path id="r13" stroke="#155EEF"/>
+      <path id="r14" stroke="#155EEF"/>
+      <path id="r15" stroke="#155EEF"/>
+      <path id="r16" stroke="#8A8F98"/>
+      <path id="r17" stroke="#8A8F98"/>
+      <path id="r18" stroke="#8A8F98"/>
+      <path id="r19" stroke="#8A8F98"/>
     </svg>
     <div id="flowTop" data-var="flowTop"></div>
     <div id="flowBottom" data-var="flowBottom"></div>
@@ -127,6 +189,8 @@ html,body{margin:0;padding:0;width:100%;height:100%;overflow:hidden;background:v
     <div id="outroRule"></div>
     <div id="lockup"><span id="brandName" data-var="brand"></span><span id="brandDot">.</span></div>
     <div id="statusLine" class="mono" data-var="status"></div>
+    <div id="outroMeta" class="mono" data-var="outroMeta"></div>
+    <div id="outroCaption" class="mono" data-var="outroCaption"></div>
   </div>
 
   <div class="hud">
