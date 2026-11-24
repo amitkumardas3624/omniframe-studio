@@ -26,6 +26,14 @@ python examples/motion-reel-template/render_template.py --out out/motion-reel
 python examples/motion-reel-template/render_template.py --verify --backend playwright
 ```
 
+For a branded brief, point `--content` at another JSON with the same keys:
+
+```powershell
+python examples/motion-reel-template/render_template.py `
+  --content examples/motion-reel-template/content.facebook.json `
+  --out out/facebook-reel
+```
+
 `--verify` renders four frames twice through a real backend and asserts byte-identical PNGs.
 The default full render is 900 frames at 1920x1080/60 fps; use `--frames 30` for a quick check.
 

@@ -44,8 +44,9 @@ def build_scene(content: dict, *, duration_frames: int = 900) -> CodeScene:
     )
 
 
-def read_content() -> dict:
-    return json.loads((HERE / "content.json").read_text(encoding="utf-8"))
+def read_content(path: str | None = None) -> dict:
+    source = Path(path) if path else HERE / "content.json"
+    return json.loads(source.read_text(encoding="utf-8"))
 
 
 def main() -> int:
@@ -53,10 +54,11 @@ def main() -> int:
     parser.add_argument("--out", default="out/motion-reel", help="frame output directory")
     parser.add_argument("--backend", default="auto", help="auto | playwright | stub")
     parser.add_argument("--frames", type=int, default=900, help="frames to render")
+    parser.add_argument("--content", default=None, help="alternate content JSON (e.g. a brand brief)")
     parser.add_argument("--verify", action="store_true", help="render 4 frames twice and compare")
     args = parser.parse_args()
 
-    content = read_content()
+    content = read_content(args.content)
 
     if args.verify:
         renderer = CodeVideoRenderer(backend=args.backend)
