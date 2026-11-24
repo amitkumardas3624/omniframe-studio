@@ -29,7 +29,9 @@ from typing import Any
 from ...core.errors import DependencyMissing, EngineUnavailable
 from ...core.logging import get_logger
 from ..compositor.ffmpeg import CancelFlag
+from .composition import composition_source, parse_composition, resolve_composition
 from .scene import CodeScene
+from .seek_adapter import seek_adapter_source
 
 LOG = get_logger("engines.code_video.backends")
 
@@ -337,6 +339,16 @@ class PlaywrightBackend(Backend):
             }
             """
         )
+
+        # Both runtimes are inert until the scene declares data-* composition
+        # metadata or registers an external animation.  They are installed
+        # before bootstrap so bootstrap can read the resolved variables.
+        page.evaluate(
+            composition_source(
+                resolve_composition(parse_composition(scene.html), scene.params)
+            )
+        )
+        page.evaluate(seek_adapter_source())
 
         if scene.bootstrap:
             try:

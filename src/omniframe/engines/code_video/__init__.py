@@ -23,20 +23,42 @@ from .backends import (
     parse_stack_location,
     select_backend,
 )
+from .composition import (
+    CompositionSpec,
+    TrackSpec,
+    composition_source,
+    parse_composition,
+    resolve_composition,
+)
 from .renderer import CodeVideoRenderer, RenderIssue, RenderResult, render_scene
 from .scene import CodeScene
+from .seek_adapter import (
+    SEEK_KINDS,
+    SeekBinding,
+    local_time,
+    seek_adapter_source,
+)
 
 __all__ = [
     "Backend",
     "CodeScene",
     "CodeVideoRenderer",
+    "CompositionSpec",
     "PlaywrightBackend",
     "RenderIssue",
     "RenderResult",
+    "SEEK_KINDS",
+    "SeekBinding",
     "StubBackend",
+    "TrackSpec",
     "build_frame_payload",
+    "composition_source",
+    "local_time",
     "mulberry32_source",
+    "parse_composition",
     "parse_stack_location",
     "render_scene",
+    "resolve_composition",
+    "seek_adapter_source",
     "select_backend",
 ]

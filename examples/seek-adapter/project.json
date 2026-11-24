@@ -1,0 +1,95 @@
+{
+  "schema_version": "1.0",
+  "meta": {
+    "name": "seek-adapter",
+    "version": "1.0",
+    "fps": 10,
+    "width": 640,
+    "height": 360,
+    "duration_frames": 20,
+    "color_space": "Rec.709",
+    "audio_sample_rate": 48000,
+    "audio_channels": 2,
+    "background": "#05060c"
+  },
+  "tracks": [
+    {
+      "id": "scene-1",
+      "name": "Composition",
+      "kind": "code_scene",
+      "index": 0,
+      "clips": [
+        {
+          "id": "intro",
+          "name": "Composition + seek adapter",
+          "kind": "code_scene",
+          "start_frame": 0,
+          "duration_frames": 20,
+          "in_frame": 0,
+          "transform": {
+            "position": [
+              0,
+              0
+            ],
+            "scale": [
+              1,
+              1
+            ],
+            "rotation": 0,
+            "anchor": [
+              0.5,
+              0.5
+            ],
+            "opacity": 1
+          },
+          "opacity": 1,
+          "volume": 1,
+          "speed": 1,
+          "blend_mode": "normal",
+          "keyframes": [],
+          "effects": [],
+          "code": {
+            "html": "<html data-composition-variables='{\"title\":\"TEMPLATE\",\"accent\":\"#7cf\"}'>\n<body style=\"margin:0;background:#05060c;font-family:system-ui,sans-serif\">\n  <div data-track=\"intro\" data-start=\"0.5\" data-duration=\"1\" data-track-index=\"0\"></div>\n  <div style=\"padding:48px\">\n    <div data-var=\"title\" style=\"color:#eef;font-size:52px;font-weight:800\"></div>\n    <div id=\"local\" style=\"color:var(--accent);font-size:28px\"></div>\n  </div>\n</body></html>",
+            "css": "",
+            "javascript": "var t = window.__OMNIFRAME_FRAME__ / window.__OMNIFRAME_FPS__;\nwindow.__omniframe_seek_adapter.seek(t, window.__OMNIFRAME_FRAME__);",
+            "bootstrap": "window.__FAKE_GSAP__ = {\n    time: function (local) {\n        document.getElementById('local').textContent = local.toFixed(3);\n    }\n};\nwindow.__omniframe_seek_adapter.register(\n    'intro', window.__FAKE_GSAP__, { kind: 'gsap', track: 'intro' });\n",
+            "seed": 11,
+            "transparent": false,
+            "background": "#05060c",
+            "params": {
+              "title": "SEEK"
+            },
+            "settle_timeout_ms": 250
+          },
+          "metadata": {}
+        }
+      ]
+    }
+  ],
+  "shots": [
+    {
+      "id": "shot-1",
+      "name": "Scrubbed intro",
+      "index": 0,
+      "start_frame": 0,
+      "end_frame": 20,
+      "description": "A GSAP-style timeline scrubbed from t with no render loop.",
+      "engine": "code_html_js",
+      "transition_in": null,
+      "transition_out": null,
+      "tags": [
+        "composition",
+        "seek-adapter"
+      ],
+      "metadata": {}
+    }
+  ],
+  "transitions": [],
+  "assets": [],
+  "render_targets": [],
+  "scene_graph": {},
+  "metadata": {
+    "created_by": "omniframe-studio",
+    "template": "seek-adapter"
+  }
+}
