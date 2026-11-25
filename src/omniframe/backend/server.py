@@ -12,6 +12,7 @@ Or via CLI:
 from __future__ import annotations
 
 import asyncio
+import base64
 import json
 import logging
 import os
@@ -30,8 +31,10 @@ from omniframe.bridges import get_bridge, list_bridges
 from omniframe.core.agent_runtime.actions import register_builtin_actions
 from omniframe.core.agent_runtime.registry import ActionRegistry, get_registry
 from omniframe.core.config import detect_environment
-from omniframe.core.errors import OmniFrameError
-from omniframe.core.timeline_schema.io import load_project
+from omniframe.core.errors import OmniFrameError, RenderError, ValidationError
+from omniframe.core.timeline_schema.io import load_project, save_project
+from omniframe.core.timeline_schema.models import OmniProject
+from omniframe.engines.code_video import CodeScene, CodeVideoRenderer
 from omniframe.updater import (
     check_for_update,
     get_cached_update_advisory,
@@ -93,6 +96,19 @@ class CheckpointSave(BaseModel):
     label: str = "auto"
 
 
+class ProjectSave(BaseModel):
+    project_path: str = Field(..., description="Path to write the edited project to")
+    project: dict[str, Any] = Field(..., description="Full edited OmniProject document")
+
+
+class PreviewFrameRequest(BaseModel):
+    project_path: str = Field(..., description="Path to project file")
+    frame: int = Field(..., ge=0, description="Absolute frame index in the project")
+    width: int | None = Field(default=None, ge=1, description="Override preview width")
+    height: int | None = Field(default=None, ge=1, description="Override preview height")
+    backend: str = Field("auto", description="auto | playwright | stub")
+
+
 class JobSubmit(BaseModel):
     kind: str = Field(..., description="Phase 2 job kind (render/compose/translate/validate)")
     payload: dict[str, Any] = Field(default_factory=dict, description="Job parameters")
@@ -117,6 +133,74 @@ async def lifespan(app: FastAPI) -> Any:
     agent_registry = reg
     LOG.info("OmniFrame Studio backend initialized — %d actions registered", len(reg.names()))
     yield
+
+
+# ── Editor preview helpers ────────────────────────────────────────────────
+
+
+def _first_code_clip(project: OmniProject) -> Any:
+    """Pick the first code_scene clip in track order (spec section: active clip)."""
+
+    for track in sorted(project.tracks, key=lambda item: item.index):
+        for clip in track.clips:
+            if getattr(clip, "kind", None) == "code_scene":
+                return clip
+    return None
+
+
+def _render_preview_frame(
+    project: OmniProject,
+    frame: int,
+    width: int | None,
+    height: int | None,
+    backend: str,
+) -> dict[str, Any]:
+    """Render one exact frame; output depends only on project bytes and frame."""
+
+    total = int(project.meta.duration_frames)
+    if frame < 0 or frame >= total:
+        raise ValidationError(
+            "Preview frame is outside the project range.",
+            frame=frame,
+            duration_frames=total,
+        )
+    clip = _first_code_clip(project)
+    if clip is None:
+        raise ValidationError("Project has no code_scene clip to preview.")
+
+    scene = CodeScene.from_clip(clip, project)
+    if width is not None:
+        scene.width = width
+    if height is not None:
+        scene.height = height
+    scene.duration_frames = 1
+    # The engine evaluates frame 0 of this one-frame scene. Overriding the
+    # injected globals makes the scene's own pure seek(t) draw at `frame`.
+    scene.javascript = (
+        f"window.__OMNIFRAME_FRAME__ = {frame};\n"
+        f"window.__OMNIFRAME_TOTAL_FRAMES__ = {total};\n"
+        + (scene.javascript or "")
+    )
+
+    renderer = CodeVideoRenderer(backend=backend)
+    with tempfile.TemporaryDirectory(prefix="omniframe-preview-") as target:
+        result = renderer.render(scene, target)
+        if not result.ok or not result.frames:
+            message = str(result.issues[0]) if result.issues else "Preview render failed"
+            raise RenderError(message)
+        png = Path(result.frames[0]).read_bytes()
+
+    return {
+        "frame": frame,
+        "t": frame / float(project.meta.fps),
+        "fps": float(project.meta.fps),
+        "width": scene.width,
+        "height": scene.height,
+        "verification_level": result.verification_level,
+        "backend": result.backend,
+        "issues": [str(issue) for issue in result.issues],
+        "image_base64": base64.b64encode(png).decode("ascii"),
+    }
 
 
 # ── FastAPI app ───────────────────────────────────────────────────────────
@@ -245,6 +329,64 @@ def create_app() -> FastAPI:
         except Exception as e:
             LOG.exception("Error loading project timeline %s", payload.project_path)
             return ActionOutput(success=False, error=str(e), error_code="E_PROJECT_LOAD")
+
+    @app.post("/api/v1/projects/get", response_model=ActionOutput)
+    async def get_project(payload: ProjectLoad) -> ActionOutput:
+        """Return the full editable project document (editor counterpart of timeline)."""
+
+        try:
+            project = load_project(payload.project_path)
+        except Exception as e:
+            LOG.exception("Error loading project %s", payload.project_path)
+            return ActionOutput(success=False, error=str(e), error_code="E_PROJECT_LOAD")
+        return ActionOutput(
+            success=True,
+            result={
+                "project_path": payload.project_path,
+                "project": project.model_dump(mode="json"),
+            },
+        )
+
+    @app.post("/api/v1/projects/save", response_model=ActionOutput)
+    async def save_edited_project(payload: ProjectSave) -> ActionOutput:
+        """Validate an edited document, then write it back atomically."""
+
+        try:
+            project = OmniProject.model_validate(payload.project)
+        except Exception as e:
+            return ActionOutput(success=False, error=str(e), error_code="E_VALIDATION")
+        try:
+            target = Path(payload.project_path)
+            scratch = target.with_name("." + target.name + ".omniframe-tmp")
+            save_project(project, scratch)
+            os.replace(scratch, target)
+        except Exception as e:
+            LOG.exception("Error saving edited project %s", payload.project_path)
+            return ActionOutput(success=False, error=str(e), error_code="E_VALIDATION")
+        return ActionOutput(success=True, result={"project_path": str(target)})
+
+    @app.post("/api/v1/preview/frame", response_model=ActionOutput)
+    async def preview_frame(payload: PreviewFrameRequest) -> ActionOutput:
+        """Render one exact frame before committing to a full video render."""
+
+        try:
+            project = load_project(payload.project_path)
+            result = await asyncio.to_thread(
+                _render_preview_frame,
+                project,
+                payload.frame,
+                payload.width,
+                payload.height,
+                payload.backend,
+            )
+            return ActionOutput(success=True, result=result)
+        except OmniFrameError as e:
+            return ActionOutput(
+                success=False, error=str(e), error_code=getattr(e, "code", "E_RENDER")
+            )
+        except Exception as e:
+            LOG.exception("Error rendering preview frame")
+            return ActionOutput(success=False, error=str(e), error_code="E_RENDER")
 
     # ── Bridge operations ───────────────────────────────────────────────────
 
