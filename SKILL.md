@@ -365,6 +365,40 @@ report under "not expressible". Never invent a field to honour the reference.
 The reference supplies *style*; the user's topic supplies *content, names, numbers and
 screens*. Copy the grammar, never the story.
 
+### 7A. Reference-to-template verification loop (mandatory)
+
+A blueprint is a hypothesis, not a finished template. Decompiling into JSON,
+passing lint, and rendering a frame sequence prove only that the pipeline runs.
+They do not prove the output looks like the reference. Never ship a template
+built in one pass.
+
+1. **Side-by-side reference vs. output comparison, never summary stats.**
+   Extract the same key frames/chapters from both the original reference video
+   and the rendered output. Inspect them side by side (contact sheet or paired
+   frames). Do not stop at passing JSON, lint or render checks, and do not accept
+   approximate placeholders when visual mechanics are missing or oversimplified.
+   Report each comparison with the exact frame numbers you looked at.
+
+2. **Concrete gap checklist across visual mechanics.** For each pair of frames,
+   ask whether the output reproduces the reference's actual visual behaviour,
+   not a thin substitute:
+   - Background shifts and kinetic typography layers/motion: not plain static
+     text on a stuck background.
+   - Full density and motion of grids/arrays/patterns: not a few sparse outlines.
+   - Particle-built typography/forms and colour transitions: not plain solid
+     text or missing particle construction.
+   - 3D focal objects/spheres/morphs over perspective/spatial layers: not empty
+     grids or flat rings.
+   - Multi-layered curves/waves/transitions and full outro hierarchy: not
+     stripped-down single lines or text.
+
+3. **Iterative fix loop until accurate.** For every concrete discrepancy found
+   in the side-by-side comparison, diagnose whether it is a template/geometry/
+   CSS/seek-logic defect or a parameter/render issue. Apply a targeted fix to the
+   template or scene, re-render, and re-compare side by side. Repeat until the
+   major visual gaps are resolved. If a specific effect cannot be pushed further
+   because of a physical or engine limit, say so explicitly and list what remains.
+
 ---
 
 ## 8. Assets — manifest, framing, video-in-video, ducking

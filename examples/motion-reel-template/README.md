@@ -43,6 +43,27 @@ Inspect the result with the project's own gate before committing to a full rende
 omniframe inspect frames --directory out/motion-reel --output out/motion-reel-sheet.png --columns 4
 ```
 
+## Side-by-side verification loop
+
+Passing JSON, lint and render checks is not proof that the reel matches the
+reference. When this template was first built, those checks were green while
+kinetic layers, grid density, particle construction, the 3D sphere and the
+flow/outro hierarchy were missing. Use this loop:
+
+1. Extract the same chapter midpoints from the reference and from the rendered
+   output. Compare paired frames side by side; record the frame numbers.
+2. Check each mechanic explicitly: background shifts and layered kinetic type;
+   full grid/array density; particle-built text and colour transitions; the 3D
+   sphere/morph over the perspective grid; multi-strand waves and the full outro
+   hierarchy.
+3. For each gap, decide whether it is a geometry/CSS/seek-logic defect or a
+   parameter/render issue. Fix the template, re-render, and compare again.
+   Stop only when the major mechanics match, or state the engine limit plainly.
+
+`tests/test_motion_reel_template.py` guards the specific regressions found by
+this loop: dense systems grid, twenty flow strands, styled sphere dots,
+glyph-sampled particles and the full outro hierarchy.
+
 ## How the parameters reach the scene
 
 `scene.html` declares defaults on its root element with `data-composition-variables`.
