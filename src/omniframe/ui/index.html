@@ -719,6 +719,199 @@
         transition-duration: 0s !important;
       }
     }
+
+    /* ---- Studio editor shell (Phase 2) ---------------------------------
+       Three named regions. OpenCut topology, plain CSS grid, no framework:
+       the preview holds the left, the timeline ruler and tracks span the
+       bottom, the inspector docks on the right. Written as real rules in
+       this block so the shell keeps its shape with the CDN unreachable. */
+    #editor-content {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) 340px;
+      grid-template-rows: minmax(260px, 1fr) minmax(200px, 34vh);
+      grid-template-areas:
+        "preview-left inspector-right"
+        "timeline-bottom timeline-bottom";
+      gap: 14px;
+      min-height: calc(100vh - 200px);
+    }
+
+    .editor-region {
+      background: #0b1018;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 10px;
+      min-width: 0;
+      min-height: 0;
+      overflow: auto;
+    }
+
+    .editor-region-preview {
+      display: grid;
+      grid-template-rows: minmax(0, 1fr) auto;
+      gap: 6px;
+      background: #050505;
+      overflow: hidden;
+    }
+
+    /* minmax(0,1fr) + min-height:0 lets the image shrink instead of pushing
+       the caption out of the region: the default grid minimum is auto. */
+    .editor-region-preview .editor-preview-wrap {
+      display: grid;
+      place-items: center;
+      min-height: 0;
+      overflow: hidden;
+    }
+
+    .editor-stage {
+      display: block;
+      max-width: 100%;
+      max-height: 100%;
+    }
+
+    .editor-region-timeline {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      overflow: hidden;
+    }
+
+    .editor-region-inspector {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+
+    .editor-transport {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .editor-transport input[type="range"] {
+      flex: 1 1 140px;
+      min-width: 110px;
+    }
+
+    .editor-timeline-scroll {
+      overflow-x: auto;
+      overflow-y: hidden;
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      background: #070b12;
+      flex: 1 1 auto;
+      min-height: 0;
+    }
+
+    .editor-timeline-inner {
+      position: relative;
+      min-width: 100%;
+      padding-bottom: 6px;
+    }
+
+    .editor-ruler {
+      position: relative;
+      height: 18px;
+      margin-left: 112px;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .editor-tick {
+      position: absolute;
+      top: 0;
+      bottom: 0;
+      width: 1px;
+      background: #2a2a2a;
+    }
+
+    .editor-tick span {
+      position: absolute;
+      left: 3px;
+      top: 1px;
+      font-size: 0.6rem;
+      color: #9aa9ba;
+      white-space: nowrap;
+    }
+
+    .editor-track {
+      display: grid;
+      grid-template-columns: 112px minmax(0, 1fr);
+      align-items: stretch;
+      border-bottom: 1px solid #1b2330;
+    }
+
+    .editor-track:last-child {
+      border-bottom: none;
+    }
+
+    .editor-track-label {
+      padding: 4px 6px;
+      font-size: 0.7rem;
+      color: #9aa9ba;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      border-right: 1px solid #1b2330;
+    }
+
+    .editor-track-rail {
+      position: relative;
+      height: 26px;
+    }
+
+    .editor-clip {
+      position: absolute;
+      top: 3px;
+      bottom: 3px;
+      padding: 0 6px;
+      font-size: 0.65rem;
+      line-height: 1.5;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      color: #0a0e17;
+      background: #7aa2f7;
+      border: 1px solid #9ab8f9;
+      border-radius: 4px;
+      cursor: pointer;
+    }
+
+    .editor-clip[data-kind="audio"] {
+      background: #9ece6a;
+      border-color: #b9e08a;
+    }
+
+    .editor-clip[data-kind="text"] {
+      background: #e0af68;
+      border-color: #f0c88a;
+    }
+
+    .editor-playhead {
+      position: absolute;
+      top: 0;
+      bottom: 0;
+      width: 2px;
+      margin-left: -1px;
+      background: #ff5722;
+      pointer-events: none;
+      z-index: 2;
+    }
+
+    .editor-playhead::before {
+      content: "";
+      position: absolute;
+      top: 0;
+      left: -4px;
+      width: 10px;
+      height: 8px;
+      background: #ff5722;
+      clip-path: polygon(0 0, 100% 0, 50% 100%);
+    }
+
+    .editor-empty {
+      padding: 10px;
+    }
   </style>
 </head>
 <body>
@@ -998,23 +1191,37 @@
       </div>
     </section>
 
-    <section class="panel" id="editor-panel" aria-labelledby="editor-panel-title" style="position: fixed; left: 240px; right: 0; top: 64px; bottom: 24px; width: auto; height: auto; overflow-y: auto; display: none;">
+    <section class="panel" id="editor-panel" aria-labelledby="editor-panel-title" style="position: fixed; left: 260px; right: 0; top: 64px; bottom: 64px; width: auto; height: auto; overflow: auto; display: none;">
       <div class="panel-header">
         <h2 class="panel-title" id="editor-panel-title">Editor</h2>
         <button class="panel-close" type="button" aria-label="Close panel">&times;</button>
       </div>
-      <div id="editor-content" style="display: grid; grid-template-columns: minmax(320px, 1fr) 320px; gap: 14px;">
-        <div>
-          <div id="editor-preview-wrap" style="background: #050505; border: 1px solid #2a2a2a; border-radius: 8px; min-height: 240px; display: grid; place-items: center;">
-            <img id="editor-preview" alt="Frame preview" style="max-width: 100%; max-height: 58vh; display: block;">
+      <div id="editor-content">
+        <div class="editor-region editor-region-preview" data-region="preview-left" style="grid-area: preview-left;">
+          <div class="editor-preview-wrap" id="editor-preview-wrap">
+            <img id="editor-preview" class="editor-stage" alt="Preview of the frame at the scrubbed timeline position">
           </div>
-          <div class="mt-2" aria-label="Editor timeline">
-            <label class="text-sm text-muted block mb-1" for="editor-scrub">Timeline scrub</label>
-            <input type="range" id="editor-scrub" min="0" max="0" value="0" style="width: 100%;" oninput="onEditorScrub(this.value)">
-            <div class="mt-1" id="editor-timeline" class="text-sm text-muted" aria-live="polite">Load a project to see its tracks.</div>
+          <div>
+            <div class="text-sm text-muted" id="editor-time-meta" aria-live="polite">t = 0.000 s</div>
+            <div class="text-sm text-muted" id="editor-verify-meta" aria-live="polite">No frame rendered yet</div>
           </div>
         </div>
-        <div id="editor-inspector">
+        <div class="editor-region editor-region-timeline" data-region="timeline-bottom" style="grid-area: timeline-bottom;">
+          <div class="editor-transport">
+            <label class="text-sm text-muted" for="editor-scrub">Timeline scrub</label>
+            <input type="range" id="editor-scrub" min="0" max="0" value="0" oninput="onEditorScrub(this.value)">
+            <label class="text-sm text-muted" for="editor-zoom">Zoom</label>
+            <input type="range" id="editor-zoom" min="2" max="24" value="6" step="1" oninput="onEditorZoom(this.value)">
+          </div>
+          <div class="editor-timeline-scroll">
+            <div class="editor-timeline-inner" id="editor-timeline-inner">
+              <div class="editor-ruler" id="editor-ruler" aria-hidden="true"></div>
+              <div id="editor-timeline" class="text-sm text-muted"><div class="editor-empty">Load a project to see its tracks.</div></div>
+              <div class="editor-playhead" id="editor-playhead" aria-hidden="true"></div>
+            </div>
+          </div>
+        </div>
+        <div class="editor-region editor-region-inspector" id="editor-inspector" data-region="inspector-right" style="grid-area: inspector-right;">
           <label class="text-sm text-muted block mb-1" for="editor-project-path">Project file path</label>
           <input type="text" id="editor-project-path" placeholder="/path/to/project.json" class="block w-full rounded border px-2 py-1 text-sm">
           <button class="tool-run mt-2" id="editor-load-btn" type="button" onclick="loadEditorProject()">Load project</button>
@@ -1039,8 +1246,15 @@
     let toolCatalog = [];
     let selectedTool = null;
     let editorProject = null;
+    let editorProjectHash = 0;
     let editorRequestId = 0;
+    let editorAbort = null;
     let editorScrubTimer = null;
+    let editorFrame = 0;
+    let editorZoom = 6;
+    const editorCache = new Map();
+    const EDITOR_CACHE_LIMIT = 40;
+    const EDITOR_TRACK_LABEL_PX = 112;
 
     function editorProjectPath() {
       const field = document.getElementById('editor-project-path');
@@ -1052,26 +1266,158 @@
       if (node) node.textContent = message;
     }
 
+    function editorMeta() {
+      return (editorProject && editorProject.meta) || {};
+    }
+
+    function editorFps() {
+      const fps = Number(editorMeta().fps);
+      return Number.isFinite(fps) && fps > 0 ? fps : 30;
+    }
+
+    // The integer frame is the source of truth; seconds are always derived.
+    function editorTimeFromFrame(frame) {
+      return frame / editorFps();
+    }
+
+    function editorDuration() {
+      return Math.max(1, Math.floor(Number(editorMeta().duration_frames) || 1));
+    }
+
     function editorRange() {
-      const meta = (editorProject && editorProject.meta) || {};
-      return Math.max(0, (Number(meta.duration_frames) || 1) - 1);
+      return Math.max(0, editorDuration() - 1);
+    }
+
+    function editorHash(document_) {
+      const text = JSON.stringify(document_);
+      let hash = 5381;
+      for (let i = 0; i < text.length; i += 1) {
+        hash = ((hash << 5) + hash + text.charCodeAt(i)) | 0;
+      }
+      return hash;
+    }
+
+    function editorCacheKey(frame) {
+      return editorProjectHash + ':' + frame;
+    }
+
+    function editorCacheGet(frame) {
+      return editorCache.get(editorCacheKey(frame));
+    }
+
+    function editorCacheSet(frame, result) {
+      if (editorCache.size >= EDITOR_CACHE_LIMIT) {
+        const oldest = editorCache.keys().next();
+        if (!oldest.done) editorCache.delete(oldest.value);
+      }
+      editorCache.set(editorCacheKey(frame), result);
+    }
+    function editorLaneWidth() {
+      return Math.max(1, editorDuration()) * editorZoom;
+    }
+
+    function updateEditorPlayhead() {
+      const playhead = document.getElementById('editor-playhead');
+      if (!playhead) return;
+      playhead.style.left = (EDITOR_TRACK_LABEL_PX + editorFrame * editorZoom) + 'px';
+    }
+
+    function editorSetFrame(frame) {
+      editorFrame = frame;
+      const field = document.getElementById('editor-frame');
+      if (field) {
+        field.max = String(editorRange());
+        field.value = String(frame);
+      }
+      const scrub = document.getElementById('editor-scrub');
+      if (scrub) {
+        scrub.max = String(editorRange());
+        scrub.value = String(frame);
+      }
+      const frameMeta = document.getElementById('editor-frame-meta');
+      if (frameMeta) frameMeta.textContent = String(frame);
+      const timeMeta = document.getElementById('editor-time-meta');
+      if (timeMeta) timeMeta.textContent = 't = ' + editorTimeFromFrame(frame).toFixed(3) + ' s';
+      updateEditorPlayhead();
+    }
+
+    function renderEditorRuler() {
+      const ruler = document.getElementById('editor-ruler');
+      if (!ruler) return;
+      const fps = editorFps();
+      ruler.style.marginLeft = EDITOR_TRACK_LABEL_PX + 'px';
+      ruler.style.width = editorLaneWidth() + 'px';
+      // One label per second unless a second is narrower than 48px.
+      const step = fps * editorZoom >= 48 ? 1 : 5;
+      const total = editorDuration() / fps;
+      const ticks = [];
+      for (let second = 0; second <= total; second += step) {
+        const at = Math.round(second * fps * editorZoom);
+        ticks.push('<div class="editor-tick" style="left: ' + at + 'px;"><span>' + second + 's</span></div>');
+      }
+      ruler.innerHTML = ticks.join('');
     }
 
     function renderEditorTimeline() {
-      const list = document.getElementById('editor-timeline');
-      if (!list) return;
+      const lanes = document.getElementById('editor-timeline');
+      const inner = document.getElementById('editor-timeline-inner');
+      if (!lanes || !inner) return;
+      const laneWidth = editorLaneWidth();
+      inner.style.width = (EDITOR_TRACK_LABEL_PX + laneWidth) + 'px';
       const tracks = (editorProject && editorProject.tracks) || [];
-      if (!tracks.length) { list.textContent = 'No tracks in this project.'; return; }
-      list.innerHTML = tracks.map((track) => {
-        const clips = Array.isArray(track.clips) ? track.clips : [];
-        const items = clips.length ? clips.map((clip) => {
-          const start = Number(clip.start_frame) || 0;
-          return `<button type="button" class="tool-run mt-1" onclick="seekEditorFrame(${start})">${escapeHtml(clip.kind || 'clip')} @ ${start}f</button>`;
-        }).join(' ') : '<span class="text-muted">No clips</span>';
-        return `<div class="action-item"><div class="action-name">${escapeHtml(track.name || track.id || 'track')}</div><div class="mt-1">${items}</div></div>`;
+      if (!tracks.length) {
+        lanes.innerHTML = '<div class="editor-empty text-muted">No tracks in this project.</div>';
+        return;
+      }
+      const ordered = tracks.slice().sort(function (a, b) {
+        return (a.index || 0) - (b.index || 0) || String(a.id || '').localeCompare(String(b.id || ''));
+      });
+      lanes.innerHTML = ordered.map(function (track) {
+        const clips = (Array.isArray(track.clips) ? track.clips : []).slice().sort(function (a, b) {
+          return (a.start_frame || 0) - (b.start_frame || 0);
+        });
+        const bars = clips.map(function (clip) {
+          const start = Math.max(0, Number(clip.start_frame) || 0);
+          const length = Math.max(1, Number(clip.duration_frames) || 1);
+          const kind = clip.kind || 'clip';
+          const name = clip.name || clip.id || kind;
+          const left = Math.round(start * editorZoom);
+          const width = Math.max(2, Math.round(length * editorZoom));
+          return '<button type="button" class="editor-clip" data-kind="' + escapeHtml(kind) +
+            '" style="left: ' + left + 'px; width: ' + width + 'px;"' +
+            ' title="' + escapeHtml(name) + ' @ ' + start + 'f" onclick="seekEditorFrame(' + start + ')">' +
+            escapeHtml(kind) + '</button>';
+        }).join('');
+        const label = escapeHtml(track.name || track.id || 'track');
+        return '<div class="editor-track"><div class="editor-track-label" title="' + label + '">' + label + '</div>' +
+          '<div class="editor-track-rail" style="width: ' + laneWidth + 'px;">' + bars + '</div></div>';
       }).join('');
     }
 
+    function onEditorZoom(value) {
+      const zoom = Math.floor(Number(value));
+      if (!Number.isFinite(zoom) || zoom < 2 || zoom > 24) return;
+      editorZoom = zoom;
+      // Zoom is layout only: the frame did not change, so do not re-render it.
+      renderEditorRuler();
+      renderEditorTimeline();
+      updateEditorPlayhead();
+    }
+    function editorShowFrame(result) {
+      const image = document.getElementById('editor-preview');
+      if (image && result.image_base64) {
+        image.src = 'data:image/png;base64,' + result.image_base64;
+      }
+      const verify = document.getElementById('editor-verify-meta');
+      if (verify) {
+        const degraded = result.verification_level === 'import_tested'
+          ? ' - stub frames, not a final render'
+          : '';
+        verify.textContent = result.verification_level + ' via ' + result.backend + degraded;
+      }
+    }
+
+    // Load the project document the preview is rendered from.
     async function loadEditorProject() {
       const path = editorProjectPath();
       if (!path) { editorStatus('Enter a project path first.'); return; }
@@ -1083,60 +1429,93 @@
           body: JSON.stringify({ project_path: path }),
         });
         const payload = await response.json();
-        if (!response.ok || !payload.success) throw new Error(payload.error || `HTTP ${response.status}`);
+        if (!response.ok || !payload.success) {
+          throw new Error(payload.error || ('HTTP ' + response.status));
+        }
         editorProject = payload.result.project;
-        const max = editorRange();
-        const scrub = document.getElementById('editor-scrub');
-        const frame = document.getElementById('editor-frame');
-        if (scrub) scrub.max = String(max);
-        if (frame) frame.max = String(max);
+        editorProjectHash = editorHash(editorProject);
+        editorCache.clear();
+        const zoomField = document.getElementById('editor-zoom');
+        if (zoomField) zoomField.value = String(editorZoom);
+        editorSetFrame(0);
+        renderEditorRuler();
         renderEditorTimeline();
         editorStatus('Project loaded. Rendering frame 0...');
         await seekEditorFrame(0);
       } catch (error) {
-        editorStatus(`Load failed: ${error.message || error}`);
+        editorStatus('Load failed: ' + (error.message || error));
       }
     }
 
+    // Render one exact frame. The integer frame is the source of truth and the
+    // time shown to the operator is derived from it, never the other way round.
     async function seekEditorFrame(frame) {
       const path = editorProjectPath();
-      if (!path || !editorProject) { editorStatus('Load a project before scrubbing.'); return; }
-      const max = editorRange();
-      const target = Math.max(0, Math.min(max, Math.floor(Number(frame) || 0)));
+      if (!path || !editorProject) {
+        editorStatus('Load a project before scrubbing.');
+        return;
+      }
+      const target = Math.max(0, Math.min(editorRange(), Math.floor(Number(frame) || 0)));
+      editorSetFrame(target);
+
+      const cached = editorCacheGet(target);
+      if (cached) {
+        editorShowFrame(cached);
+        editorStatus('Frame ' + target + ' / ' + editorRange() + ' from cache | t=' +
+          editorTimeFromFrame(target).toFixed(3) + 's');
+        return;
+      }
+
+      editorStatus('Rendering frame ' + target + '...');
       const requestId = ++editorRequestId;
-      editorStatus(`Rendering frame ${target}...`);
+      // A slow older frame must never land on top of a newer one: cancel the
+      // request that is still in flight, and let the sequence guard below
+      // discard anything that was already past the point of cancellation.
+      if (editorAbort) editorAbort.abort();
+      const controller = new AbortController();
+      editorAbort = controller;
       try {
         const response = await fetch('/api/v1/preview/frame', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ project_path: path, frame: target }),
+          signal: controller.signal,
         });
         const payload = await response.json();
         if (requestId !== editorRequestId) return;
-        if (!response.ok || !payload.success) throw new Error(payload.error || `HTTP ${response.status}`);
+        if (!response.ok || !payload.success) {
+          throw new Error(payload.error || ('HTTP ' + response.status));
+        }
         const result = payload.result;
-        const image = document.getElementById('editor-preview');
-        if (image) image.src = `data:image/png;base64,${result.image_base64}`;
-        const field = document.getElementById('editor-frame');
-        if (field) field.value = String(target);
-        const scrub = document.getElementById('editor-scrub');
-        if (scrub) scrub.value = String(target);
-        const meta = document.getElementById('editor-frame-meta');
-        if (meta) meta.textContent = String(target);
-        editorStatus(`Frame ${target} / ${max} | t=${Number(result.t).toFixed(3)}s | ${result.verification_level}`);
+        editorCacheSet(target, result);
+        editorShowFrame(result);
+        editorStatus('Frame ' + target + ' / ' + editorRange() + ' | t=' +
+          editorTimeFromFrame(target).toFixed(3) + 's | ' + result.verification_level);
       } catch (error) {
-        if (requestId === editorRequestId) editorStatus(`Preview failed: ${error.message || error}`);
+        if (error && error.name === 'AbortError') return;
+        if (requestId === editorRequestId) {
+          editorStatus('Preview failed: ' + (error.message || error));
+        }
+      } finally {
+        if (editorAbort === controller) editorAbort = null;
       }
     }
 
+    // Debounced: one preview costs a full headless frame, so a pixel-by-pixel
+    // drag must not queue one render per step.
     function onEditorScrub(value) {
+      const frame = Math.max(0, Math.min(editorRange(), Math.floor(Number(value) || 0)));
+      editorSetFrame(frame);
       if (editorScrubTimer) clearTimeout(editorScrubTimer);
-      editorScrubTimer = setTimeout(() => seekEditorFrame(value), 120);
+      editorScrubTimer = setTimeout(function () { seekEditorFrame(frame); }, 120);
     }
 
     async function saveEditorProject() {
       const path = editorProjectPath();
-      if (!path || !editorProject) { editorStatus('Load a project before saving.'); return; }
+      if (!path || !editorProject) {
+        editorStatus('Load a project before saving.');
+        return;
+      }
       editorStatus('Saving project...');
       try {
         const response = await fetch('/api/v1/projects/save', {
@@ -1145,10 +1524,13 @@
           body: JSON.stringify({ project_path: path, project: editorProject }),
         });
         const payload = await response.json();
-        if (!response.ok || !payload.success) throw new Error(payload.error || `HTTP ${response.status}`);
-        editorStatus(`Saved ${payload.result.project_path}`);
+        if (!response.ok || !payload.success) {
+          throw new Error(payload.error || ('HTTP ' + response.status));
+        }
+        editorProjectHash = editorHash(editorProject);
+        editorStatus('Saved ' + payload.result.project_path);
       } catch (error) {
-        editorStatus(`Save failed: ${error.message || error}`);
+        editorStatus('Save failed: ' + (error.message || error));
       }
     }
 
