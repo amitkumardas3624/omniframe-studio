@@ -887,6 +887,51 @@
       border-color: #f0c88a;
     }
 
+    .editor-clip-label {
+      display: block;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      pointer-events: none;
+    }
+
+    .editor-clip-handle {
+      position: absolute;
+      top: 0;
+      bottom: 0;
+      width: 8px;
+      background: rgba(255,255,255,0.35);
+      cursor: ew-resize;
+      opacity: 0;
+      transition: opacity 0.12s ease;
+      pointer-events: auto;
+    }
+    .editor-clip:hover .editor-clip-handle {
+      opacity: 1;
+    }
+    .editor-clip-handle:hover {
+      background: rgba(255,255,255,0.6);
+    }
+    .editor-clip-handle[data-handle="in"] {
+      left: 0; border-radius: 4px 0 0 4px;
+    }
+    .editor-clip-handle[data-handle="out"] {
+      right: 0; border-radius: 0 4px 4px 0;
+    }
+
+    .editor-track-remove {
+      float: right;
+      border: 0;
+      background: transparent;
+      color: #9aa9ba;
+      cursor: pointer;
+      font-size: 0.8rem;
+      line-height: 1;
+    }
+    .editor-track-remove:hover {
+      color: #ff6b6b;
+    }
+
     .editor-playhead {
       position: absolute;
       top: 0;
@@ -1210,6 +1255,7 @@
           <div class="editor-transport">
             <label class="text-sm text-muted" for="editor-scrub">Timeline scrub</label>
             <input type="range" id="editor-scrub" min="0" max="0" value="0" oninput="onEditorScrub(this.value)">
+            <button class="tool-run" type="button" onclick="editorAddTrack()">Track</button>
             <label class="text-sm text-muted" for="editor-zoom">Zoom</label>
             <input type="range" id="editor-zoom" min="2" max="24" value="6" step="1" oninput="onEditorZoom(this.value)">
           </div>
@@ -1286,6 +1332,130 @@
 
     function editorRange() {
       return Math.max(0, editorDuration() - 1);
+    }
+    // ---- Phase 3: timeline drag/trim timing maths (pure; unit-tested) ----
+    // The integer frame is the source of truth. px are a zoomed view only.
+    //
+    // A clip with start S and duration D occupies [S, S+D). Two clips on a
+    // track must not overlap: [X, X+D) and a sibling [s, e) are disjoint iff
+    // X >= e or X + D <= s. All placement chooses among frame-aligned start
+    // candidates derived from the timeline bounds and the sibling edges so
+    // every result lands exactly on a frame and slides flush against a
+    // neighbour instead of overlapping it.
+
+    function editorFrameToPx(frame) {
+      const label = (typeof EDITOR_TRACK_LABEL_PX === 'number') ? EDITOR_TRACK_LABEL_PX : 112;
+      return label + Math.round(Number(frame) || 0) * editorZoom;
+    }
+
+    function editorPxToFrame(px) {
+      const label = (typeof EDITOR_TRACK_LABEL_PX === 'number') ? EDITOR_TRACK_LABEL_PX : 112;
+      const raw = Math.round(((Number(px) || 0) - label) / editorZoom);
+      return Math.max(0, raw);
+    }
+    function editorSnapEdges(frame, targetFrames) {
+      // Empty/undefined: return unchanged. Otherwise return the closest
+      // target within a 4-frame pull, ties resolved to the smaller value.
+      const targets = Array.isArray(targetFrames) ? targetFrames : [];
+      if (!targets.length) return frame;
+      const radius = 4;
+      let best = frame;
+      let bestDist = radius;
+      for (let i = 0; i < targets.length; i++) {
+        const t = Math.round(Number(targets[i]) || 0);
+        if (t === frame) return frame;
+        const d = Math.abs(t - frame);
+        if (d >= radius) continue;
+        if (d < bestDist || (d === bestDist && t < best)) {
+          best = t;
+          bestDist = d;
+        }
+      }
+      return best;
+    }
+
+    function editorCandidateStarts(duration, siblings, maxExclusive) {
+      const D = Math.max(1, Math.floor(Number(duration) || 1));
+      const max = Math.max(0, Math.floor(Number(maxExclusive) || 0));
+      const pool = [0, max - D];
+      for (let i = 0; i < siblings.length; i++) {
+        const s = Math.floor(Number(siblings[i].start) || 0);
+        const e = Math.floor(Number(siblings[i].end) || 0);
+        pool.push(s - D, s, e);
+      }
+      return { D: D, max: max, pool: pool };
+    }
+    function editorPlacement(requested, duration, siblings, maxExclusive) {
+      const base = editorCandidateStarts(duration, siblings, maxExclusive);
+      const D = base.D;
+      const max = base.max;
+      const wanted = Math.floor(Number(requested) || 0);
+      const lo = 0;
+      const hi = max - D;
+      // Snap to sibling edges only; timeline bounds are enforced by the
+      // clamping below, not treated as pull targets (a free move must not
+      // snap to the boundary).
+      const targets = [];
+      for (let i = 0; i < siblings.length; i++) {
+        targets.push(Math.floor(Number(siblings[i].start) || 0));
+        targets.push(Math.floor(Number(siblings[i].end) || 0));
+      }
+      // The frame we aim for is whichever snap target is nearest within the
+      // radius; if none is, the raw requested frame stays the aim.
+      const aimed = editorSnapEdges(wanted, targets);
+      const pool = base.pool.concat([aimed]);
+      let best = null;
+      let bestDist = Infinity;
+      for (let i = 0; i < pool.length; i++) {
+        let X = Math.floor(Number(pool[i]) || 0);
+        if (X < lo) X = lo;
+        if (X > hi) X = hi;
+        let overlap = false;
+        for (let k = 0; k < siblings.length; k++) {
+          const s = Math.floor(Number(siblings[k].start) || 0);
+          const e = Math.floor(Number(siblings[k].end) || 0);
+          if (!(X >= e || X + D <= s)) { overlap = true; break; }
+        }
+        if (overlap) continue;
+        const d = Math.abs(X - aimed);
+        if (best === null || d < bestDist || (d === bestDist && X < best)) {
+          best = X;
+          bestDist = d;
+        }
+      }
+      const start = (best === null) ? Math.max(0, Math.min(hi, aimed)) : best;
+      return { start: start, duration: D };
+    }
+    // Trim a clip from one edge. The opposite edge stays pinned. The length is
+    // forced to >= 1 and the open edge is clamped so the clip never overlaps a
+    // sibling: the right edge stops at the next sibling start, the left edge
+    // stops at the previous sibling end.
+    //   edge == "out": start is pinned; the exclusive end moves to requested.
+    //   edge == "in" : the end is pinned at start+duration; start moves.
+    function editorTrim(prevStart, prevDuration, edge, requested, siblings, maxExclusive) {
+      const S = Math.floor(Number(prevStart) || 0);
+      const D = Math.max(1, Math.floor(Number(prevDuration) || 1));
+      const endNow = S + D;
+      const max = Math.floor(Number(maxExclusive) || 0);
+      const req = Math.floor(Number(requested) || 0);
+      const sibs = Array.isArray(siblings) ? siblings : [];
+      if (edge === "in") {
+        let newStart = req;
+        for (let i = 0; i < sibs.length; i++) {
+          const e = Math.floor(Number(sibs[i].end) || 0);
+          if (e <= endNow && newStart < e) newStart = e;
+        }
+        newStart = Math.max(0, Math.min(newStart, endNow - 1));
+        return { start: newStart, duration: endNow - newStart };
+      }
+      // "out" (and any unrecognised edge default to extending from the start)
+      let newEnd = req;
+      for (let i = 0; i < sibs.length; i++) {
+        const s = Math.floor(Number(sibs[i].start) || 0);
+        if (s >= S && newEnd > s) newEnd = s;
+      }
+      newEnd = Math.max(S + 1, Math.min(newEnd, max));
+      return { start: S, duration: newEnd - S };
     }
 
     function editorHash(document_) {
@@ -1383,15 +1553,152 @@
           const name = clip.name || clip.id || kind;
           const left = Math.round(start * editorZoom);
           const width = Math.max(2, Math.round(length * editorZoom));
+                    const trackId = escapeHtml(track.id);
+          const clipId = escapeHtml(clip.id);
           return '<button type="button" class="editor-clip" data-kind="' + escapeHtml(kind) +
-            '" style="left: ' + left + 'px; width: ' + width + 'px;"' +
-            ' title="' + escapeHtml(name) + ' @ ' + start + 'f" onclick="seekEditorFrame(' + start + ')">' +
-            escapeHtml(kind) + '</button>';
+            '" data-track="' + trackId + '" data-clip="' + clipId + '" data-start="' + start + '"' +
+            ' style="left: ' + left + 'px; width: ' + width + 'px;"' +
+            ' title="' + escapeHtml(name) + ' @ ' + start + 'f"' +
+            ' onpointerdown="editorClipPointerDown(event)" onclick="editorClipClick(event)">' +
+            '<span class="editor-clip-handle" data-handle="in" aria-hidden="true"></span>' +
+            '<span class="editor-clip-label">' + escapeHtml(kind) + '</span>' +
+            '<span class="editor-clip-handle" data-handle="out" aria-hidden="true"></span>' +
+            '</button>';
         }).join('');
+        const trackId = escapeHtml(track.id);
         const label = escapeHtml(track.name || track.id || 'track');
-        return '<div class="editor-track"><div class="editor-track-label" title="' + label + '">' + label + '</div>' +
-          '<div class="editor-track-rail" style="width: ' + laneWidth + 'px;">' + bars + '</div></div>';
+        return '<div class="editor-track"><div class="editor-track-label" title="' + label + '">' + label +
+          '<button type="button" class="editor-track-remove" title="Remove track" aria-label="Remove track"' +
+          ' data-track="' + trackId + '" onclick="editorRemoveTrack(this)">&times;</button>' +
+          '</div>' + '<div class="editor-track-rail" style="width: ' + laneWidth + 'px;">' + bars + '</div></div>';
       }).join('');
+    }
+
+    // ---- Phase 3: clip drag / trim / track add + remove ---------------------
+    // Editing mutates the in-memory project copy; press Save project to
+    // persist. Move and trim go through the pure timing-math functions so
+    // the result is frame-aligned and never overlaps a sibling clip on the
+    // same track.
+
+    let editorDrag = null;
+    let editorLastDragMoved = false;
+
+    function editorSiblingIntervals(trackId, excludeClipId) {
+      const tracks = (editorProject && editorProject.tracks) || [];
+      const track = tracks.find(function (t) { return String(t.id) === String(trackId); });
+      if (!track || !Array.isArray(track.clips)) return [];
+      return track.clips
+        .filter(function (c) { return String(c.id) !== String(excludeClipId); })
+        .map(function (c) {
+          const s = Math.max(0, Math.floor(Number(c.start_frame) || 0));
+          return { start: s, end: s + Math.max(1, Math.floor(Number(c.duration_frames) || 1)) };
+        });
+    }
+
+    function editorClipPointerDown(event) {
+      const button = event.currentTarget;
+      const trackId = button.getAttribute('data-track');
+      const clipId = button.getAttribute('data-clip');
+      if (!trackId || !clipId) return;
+      const target = event.target;
+      const handle = target && target.getAttribute ? target.getAttribute('data-handle') : null;
+      const mode = (handle === 'in' || handle === 'out') ? 'trim' : 'move';
+      const rail = button.closest('.editor-track-rail');
+      if (!rail) return;
+      const box = rail.getBoundingClientRect();
+      const tracks = (editorProject && editorProject.tracks) || [];
+      const track = tracks.find(function (t) { return String(t.id) === String(trackId); });
+      let clip = null;
+      if (track && Array.isArray(track.clips)) {
+        clip = track.clips.find(function (c) { return String(c.id) === String(clipId); });
+      }
+      if (!clip) return;
+      editorDrag = {
+        trackId: trackId, clipId: clipId, mode: mode, edge: handle,
+        startClientX: event.clientX, railLeft: box.left,
+        startFrame: Math.max(0, Math.floor(Number(clip.start_frame) || 0)),
+        duration: Math.max(1, Math.floor(Number(clip.duration_frames) || 1)),
+        siblings: editorSiblingIntervals(trackId, clipId),
+        moved: false,
+      };
+      window.addEventListener('pointermove', onEditorDragMove);
+      window.addEventListener('pointerup', onEditorDragEnd);
+      window.addEventListener('pointercancel', onEditorDragEnd);
+      if (event.cancelable) event.preventDefault();
+      event.stopPropagation();
+    }
+
+    function onEditorDragMove(event) {
+      if (!editorDrag) return;
+      const deltaPx = event.clientX - editorDrag.startClientX;
+      const frameDelta = Math.round(deltaPx / editorZoom);
+      if (frameDelta !== 0) editorDrag.moved = true;
+      const maxExcl = editorDuration();
+      let result;
+      if (editorDrag.mode === 'trim') {
+        // Trim: the pointer frame IS the requested open edge (no grab offset).
+        const pointerFrame = Math.max(0, Math.round((event.clientX - editorDrag.railLeft) / editorZoom));
+        result = editorTrim(editorDrag.startFrame, editorDrag.duration, editorDrag.edge,
+          pointerFrame, editorDrag.siblings, maxExcl);
+      } else {
+        // Move: keep the grab offset so the clip follows the pointer.
+        const requested = editorDrag.startFrame + frameDelta;
+        result = editorPlacement(requested, editorDrag.duration, editorDrag.siblings, maxExcl);
+      }
+      const tracks = (editorProject && editorProject.tracks) || [];
+      const track = tracks.find(function (t) { return String(t.id) === String(editorDrag.trackId); });
+      if (track && Array.isArray(track.clips)) {
+        const clip = track.clips.find(function (c) { return String(c.id) === String(editorDrag.clipId); });
+        if (clip) { clip.start_frame = result.start; clip.duration_frames = result.duration; }
+      }
+      renderEditorTimeline();
+      updateEditorPlayhead();
+    }
+
+    function onEditorDragEnd() {
+      if (!editorDrag) return;
+      editorLastDragMoved = editorDrag.moved;
+      window.removeEventListener('pointermove', onEditorDragMove);
+      window.removeEventListener('pointerup', onEditorDragEnd);
+      window.removeEventListener('pointercancel', onEditorDragEnd);
+      editorDrag = null;
+    }
+    function editorClipClick(event) {
+      const button = event.currentTarget;
+      if (editorLastDragMoved) { editorLastDragMoved = false; event.preventDefault(); return; }
+      const start = Number(button.getAttribute('data-start'));
+      if (Number.isFinite(start)) seekEditorFrame(start);
+    }
+
+    function editorAddTrack() {
+      if (!editorProject) { editorStatus('Load a project before editing tracks.'); return; }
+      if (!Array.isArray(editorProject.tracks)) editorProject.tracks = [];
+      let maxIndex = -1;
+      editorProject.tracks.forEach(function (t) {
+        const idx = Math.floor(Number(t.index) || 0);
+        if (idx > maxIndex) maxIndex = idx;
+      });
+      const uniqueBase = 'track-video';
+      let id = uniqueBase + '-' + (maxIndex + 1);
+      let suffix = 0;
+      while (editorProject.tracks.some(function (t) { return String(t.id) === String(id); })) {
+        suffix += 1;
+        id = uniqueBase + '-' + (maxIndex + 1) + '-' + suffix;
+      }
+      editorProject.tracks.push({ id: id, kind: 'video', index: maxIndex + 1, clips: [] });
+      renderEditorTimeline();
+      updateEditorPlayhead();
+      editorStatus('Track added - press Save project to persist.');
+    }
+
+    function editorRemoveTrack(button) {
+      const id = button.getAttribute('data-track');
+      if (!id || !editorProject || !Array.isArray(editorProject.tracks)) return;
+      const next = editorProject.tracks.filter(function (t) { return String(t.id) !== String(id); });
+      editorProject.tracks = next;
+      renderEditorTimeline();
+      updateEditorPlayhead();
+      editorStatus('Track removed - press Save project to persist.');
     }
 
     function onEditorZoom(value) {
