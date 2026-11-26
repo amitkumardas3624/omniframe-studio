@@ -26,6 +26,7 @@ from fastapi import FastAPI, Request, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import HTMLResponse, StreamingResponse
 from pydantic import BaseModel, Field
+from pydantic import ValidationError as PydanticValidationError
 
 from omniframe.bridges import get_bridge, list_bridges
 from omniframe.core.agent_runtime.actions import register_builtin_actions
@@ -91,6 +92,13 @@ class ProjectValidate(BaseModel):
     check_assets: bool = True
 
 
+class InspectorValidateRequest(BaseModel):
+    project: dict[str, Any] = Field(
+        ..., description="In-memory OmniProject document to validate"
+    )
+    check_assets: bool = False
+
+
 class CheckpointSave(BaseModel):
     project_path: str = Field(..., description="Path to project file")
     label: str = "auto"
@@ -107,6 +115,14 @@ class PreviewFrameRequest(BaseModel):
     width: int | None = Field(default=None, ge=1, description="Override preview width")
     height: int | None = Field(default=None, ge=1, description="Override preview height")
     backend: str = Field("auto", description="auto | playwright | stub")
+    project: dict[str, Any] | None = Field(
+        default=None,
+        description=(
+            "Optional in-memory project document. When present it is validated and "
+            "rendered from instead of the on-disk file, so unsaved inspector edits "
+            "(e.g. code.params) are reflected in the preview frame."
+        ),
+    )
 
 
 class JobSubmit(BaseModel):
@@ -365,12 +381,46 @@ def create_app() -> FastAPI:
             return ActionOutput(success=False, error=str(e), error_code="E_VALIDATION")
         return ActionOutput(success=True, result={"project_path": str(target)})
 
-    @app.post("/api/v1/preview/frame", response_model=ActionOutput)
-    async def preview_frame(payload: PreviewFrameRequest) -> ActionOutput:
-        """Render one exact frame before committing to a full video render."""
+    @app.post("/api/v1/inspector/validate", response_model=ActionOutput)
+    async def inspector_validate(payload: InspectorValidateRequest) -> ActionOutput:
+        """Validate an in-memory project document for the inspector.
+
+        Runs the same semantic checks as the disk-based validate endpoint but on
+        an arbitrary document, so the editor can surface schema errors (e.g.
+        E_CLIP_OVERLAP) before saving without needing a file on disk.
+        """
+
+        from omniframe.core.timeline_schema.validate import summarize, validate_document
 
         try:
-            project = load_project(payload.project_path)
+            project = OmniProject.model_validate(payload.project)
+            summary = summarize(validate_document(project.model_dump(mode="json")))
+            return ActionOutput(success=True, result=summary)
+        except Exception as e:
+            return ActionOutput(success=False, error=str(e), error_code="E_VALIDATION")
+
+    @app.post("/api/v1/preview/frame", response_model=ActionOutput)
+    async def preview_frame(payload: PreviewFrameRequest) -> ActionOutput:
+        """Render one exact frame before committing to a full video render.
+
+        When ``payload.project`` is supplied it is validated and rendered from
+        instead of the on-disk file, so unsaved inspector edits (params etc.)
+        are reflected in the frame. A structurally invalid in-memory document
+        surfaces E_VALIDATION; schema issues are returned under
+        ``result.validation`` for the inspector to display.
+        """
+
+        from omniframe.core.timeline_schema.validate import (
+            summarize,
+            validate_document,
+        )
+
+        try:
+            if payload.project is not None:
+                project = OmniProject.model_validate(payload.project)
+            else:
+                project = load_project(payload.project_path)
+
             result = await asyncio.to_thread(
                 _render_preview_frame,
                 project,
@@ -379,8 +429,18 @@ def create_app() -> FastAPI:
                 payload.height,
                 payload.backend,
             )
+            result = dict(result)
+            result["validation"] = summarize(
+                validate_document(project.model_dump(mode="json"))
+            )
             return ActionOutput(success=True, result=result)
+        except PydanticValidationError as e:
+            # A malformed in-memory document (schema-level) is a validation
+            # failure, not a render failure.
+            return ActionOutput(success=False, error=str(e), error_code="E_VALIDATION")
         except OmniFrameError as e:
+            # Includes the out-of-range and no-code-scene ValidationErrors the
+            # renderer raises; their own .code (E_VALIDATION, ...) is kept.
             return ActionOutput(
                 success=False, error=str(e), error_code=getattr(e, "code", "E_RENDER")
             )

@@ -1280,6 +1280,37 @@
           <div class="mt-4">
             <button class="tool-run" id="editor-save-btn" type="button" onclick="saveEditorProject()">Save project</button>
           </div>
+          <div class="mt-4" id="editor-inspector-clip">
+            <div class="text-sm font-semibold mb-1">Selected clip</div>
+            <div class="text-sm text-muted mb-2" id="editor-inspector-clip-meta">Click a clip on the timeline to inspect it.</div>
+            <div id="editor-inspector-timing">
+              <div class="mb-1">
+                <label class="text-sm text-muted block" for="editor-clip-start">Start frame</label>
+                <input type="number" id="editor-clip-start" min="0" class="block w-full rounded border px-2 py-1 text-sm">
+              </div>
+              <div class="mb-1">
+                <label class="text-sm text-muted block" for="editor-clip-duration">Duration frames</label>
+                <input type="number" id="editor-clip-duration" min="1" class="block w-full rounded border px-2 py-1 text-sm">
+              </div>
+              <button class="tool-run mt-1" type="button" onclick="editorApplyInspectorTiming()">Apply timing</button>
+            </div>
+            <div id="editor-inspector-params" class="mt-3">
+              <label class="text-sm text-muted block" for="editor-clip-params">code.params (content.json)</label>
+              <textarea id="editor-clip-params" rows="6" spellcheck="false" class="block w-full rounded border px-2 py-1 text-sm"></textarea>
+              <div class="text-xs text-muted mt-1" id="editor-inspector-params-hint">Composition keys (data-composition-variables): none</div>
+              <button class="tool-run mt-1" type="button" onclick="editorApplyInspectorParams()">Apply params</button>
+            </div>
+          </div>
+          <div class="mt-4">
+            <div class="text-sm font-semibold mb-1">Validation</div>
+            <pre id="editor-inspector-issues" class="text-xs text-muted" role="status" aria-live="polite">No issues.</pre>
+          </div>
+          <div class="mt-4">
+            <div class="text-sm font-semibold mb-1">Assets</div>
+            <ul id="editor-inspector-assets" class="text-sm text-muted list-none m-0 p-0">
+              <li>No assets. Add them to project.assets in the project file.</li>
+            </ul>
+          </div>
           <div class="mt-4 text-sm text-muted" id="editor-status" role="status" aria-live="polite">Ready</div>
         </div>
       </div>
@@ -1574,7 +1605,112 @@
       }).join('');
     }
 
-    // ---- Phase 3: clip drag / trim / track add + remove ---------------------
+
+    // ---- Phase 4: inspector helpers (pure; unit-tested) --------------------
+    // Selection is in-memory state; timing comes back as frame integers; the
+    // params text area round-trips code.params as JSON; the assets list reads
+    // project.assets. All are DOM-free so the browser tests can call them.
+    let editorSelection = null;
+
+    function editorSelectedClip() {
+      if (!editorSelection) return null;
+      if (!editorProject || !Array.isArray(editorProject.tracks)) return null;
+      const track = editorProject.tracks.find(function (t) {
+        return String(t.id) === String(editorSelection.trackId);
+      });
+      if (!track || !Array.isArray(track.clips)) return null;
+      return track.clips.find(function (c) {
+        return String(c.id) === String(editorSelection.clipId);
+      }) || null;
+    }
+
+    function editorTimingFields(clip) {
+      return {
+        start_frame: Math.max(0, Math.floor(Number(clip && clip.start_frame) || 0)),
+        duration_frames: Math.max(1, Math.floor(Number(clip && clip.duration_frames) || 1)),
+      };
+    }
+
+    function editorParseParamsJson(text) {
+      let value;
+      try { value = JSON.parse(String(text == null ? "" : text)); }
+      catch (error) {
+        return { ok: false, error: "Invalid JSON: " + (error && error.message ? error.message : error) };
+      }
+      if (value === null || typeof value !== "object" || Array.isArray(value)) {
+        return { ok: false, error: "code.params must be a JSON object." };
+      }
+      return { ok: true, params: value };
+    }
+
+    function editorApplyParams(clip, text) {
+      const result = editorParseParamsJson(text);
+      if (!result.ok) return result;
+      if (!clip) return { ok: false, error: "No clip selected." };
+      if (!clip.code) clip.code = {};
+      clip.code.params = result.params;
+      return { ok: true, params: result.params };
+    }
+
+    function editorCompositionKeys(html) {
+      if (typeof html !== "string") return [];
+      const attr = "data-composition-variables";
+      const keys = [];
+      let from = 0;
+      for (;;) {
+        const i = html.indexOf(attr, from);
+        if (i === -1) break;
+        const brace = html.indexOf("{", i);
+        if (brace !== -1) {
+          const end = _balancedJsonEnd(html, brace);
+          const parsed = JSON.parse(html.slice(brace, end) || "{}");
+          if (parsed && typeof parsed === "object" && !Array.isArray(parsed)) {
+            Object.keys(parsed).forEach(function (k) { if (keys.indexOf(k) === -1) keys.push(k); });
+          }
+        }
+        from = i + attr.length;
+      }
+      return keys;
+    }
+
+    function _balancedJsonEnd(text, start) {
+      const DQUOT = 34;
+      const BSLASH = 92;
+      const LBRACE = 123;
+      const RBRACE = 125;
+      let depth = 0;
+      let inString = false;
+      let escaped = false;
+      for (let i = start; i < text.length; i++) {
+        const code = text.charCodeAt(i);
+        if (inString) {
+          if (escaped) { escaped = false; }
+          else if (code === BSLASH) { escaped = true; }
+          else if (code === DQUOT) { inString = false; }
+        } else {
+          if (code === DQUOT) { inString = true; }
+          else if (code === LBRACE) { depth += 1; }
+          else if (code === RBRACE) {
+            depth -= 1;
+            if (depth === 0) return i + 1;
+          }
+        }
+      }
+      return start;
+    }
+
+    function editorAssetsRows(project) {
+      if (!project || !Array.isArray(project.assets)) return [];
+      return project.assets.map(function (a) {
+        return { id: a.id, kind: a.kind, path: a.path == null ? "" : a.path };
+      });
+    }
+
+    function editorValidateIssues(issues) {
+      if (!Array.isArray(issues)) return [];
+      return issues.filter(function (i) { return i && i.severity === "error"; })
+        .map(function (i) { return i.code + ": " + i.message; });
+    }
     // Editing mutates the in-memory project copy; press Save project to
     // persist. Move and trim go through the pure timing-math functions so
     // the result is frame-aligned and never overlaps a sibling clip on the
@@ -1666,6 +1802,10 @@
     function editorClipClick(event) {
       const button = event.currentTarget;
       if (editorLastDragMoved) { editorLastDragMoved = false; event.preventDefault(); return; }
+      const trackId = button.getAttribute('data-track');
+      const clipId = button.getAttribute('data-clip');
+      editorSelection = { trackId: trackId, clipId: clipId };
+      renderEditorInspector();
       const start = Number(button.getAttribute('data-start'));
       if (Number.isFinite(start)) seekEditorFrame(start);
     }
@@ -1722,6 +1862,117 @@
           : '';
         verify.textContent = result.verification_level + ' via ' + result.backend + degraded;
       }
+      // Surface schema issues returned for the in-memory document so an
+      // overlapping/odd edit is never silently accepted.
+      const issuesNode = document.getElementById('editor-inspector-issues');
+      if (issuesNode) {
+        const summary = result.validation;
+        const issues = summary && Array.isArray(summary.issues) ? summary.issues : [];
+        const lines = editorValidateIssues(issues);
+        issuesNode.textContent = lines.length
+          ? 'Schema errors:\n' + lines.join('\n')
+          : (issues.length ? 'Validation OK (' + issues.length + ' checks).' : 'No issues.');
+      }
+    }
+
+    // ---- Phase 4: inspector DOM wiring ------------------------------
+    // Renders the selected clip's timing, code.params editor (for code_scene
+    // clips) with the data-composition-variables keys as a hint, and the
+    // project assets list. Editing goes through the pure helpers above.
+
+    function renderEditorInspector() {
+      const clip = editorSelectedClip();
+      const meta = document.getElementById('editor-inspector-clip-meta');
+      const timing = document.getElementById('editor-inspector-timing');
+      const params = document.getElementById('editor-inspector-params');
+      const assets = document.getElementById('editor-inspector-assets');
+
+      if (!clip) {
+        if (meta) meta.textContent = 'Click a clip on the timeline to inspect it.';
+        if (timing) timing.hidden = true;
+        if (params) params.hidden = true;
+      } else {
+        if (meta) meta.textContent = clip.id + ' (' + (clip.kind || 'clip') + ') on ' +
+          (editorSelection ? editorSelection.trackId : 'track');
+        if (timing) {
+          timing.hidden = false;
+          const fields = editorTimingFields(clip);
+          const start = document.getElementById('editor-clip-start');
+          const duration = document.getElementById('editor-clip-duration');
+          if (start) start.value = String(fields.start_frame);
+          if (duration) duration.value = String(fields.duration_frames);
+        }
+        const isCode = String(clip.kind || '') === 'code_scene';
+        if (params) {
+          params.hidden = !isCode;
+          if (isCode) {
+            const textarea = document.getElementById('editor-clip-params');
+            // Only refill from the model after an external change (not while
+            // the operator is typing in the box), so keystrokes are not lost.
+            if (textarea && (!document.activeElement || document.activeElement !== textarea)) {
+              if (clip.code) textarea.value = JSON.stringify(clip.code.params || {}, null, 2);
+            }
+            const hint = document.getElementById('editor-inspector-params-hint');
+            if (hint) {
+              const html = (clip.code && clip.code.html) || '';
+              const keys = editorCompositionKeys(html);
+              hint.textContent = 'Composition keys (data-composition-variables): ' +
+                (keys.length ? keys.join(', ') : 'none declared');
+            }
+          }
+        }
+      }
+
+      if (assets) {
+        const rows = editorAssetsRows(editorProject);
+        assets.innerHTML = rows.length
+          ? rows.map(function (a) {
+              return '<li>' + escapeHtml(a.id) + ' <span class="text-muted">[' +
+                escapeHtml(String(a.kind)) + ']</span> ' + escapeHtml(a.path) + '</li>';
+            }).join('')
+          : '<li>No assets. Add them to project.assets in the project file.</li>';
+      }
+    }
+
+    function editorApplyInspectorTiming() {
+      const clip = editorSelectedClip();
+      if (!clip) return;
+      const siblingIntervals = editorSelection
+        ? editorSiblingIntervals(editorSelection.trackId, editorSelection.clipId)
+        : [];
+      const start = Math.floor(Number(document.getElementById('editor-clip-start').value) || 0);
+      const duration = Math.max(1, Math.floor(Number(document.getElementById('editor-clip-duration').value) || 1));
+      // Reuse the collision-free placement/trim maths so inspector edits never
+      // overlap a sibling and always stay inside the timeline.
+      const target = (document.activeElement && document.activeElement.id === 'editor-clip-duration')
+        ? editorTrim(clip.start_frame, clip.duration_frames, 'out', start + duration - 1, siblingIntervals, editorDuration())
+        : editorPlacement(start, duration, siblingIntervals, editorDuration());
+      clip.start_frame = target.start;
+      clip.duration_frames = target.duration;
+      // The in-memory project changed, so the frame cache is stale; rehash
+      // so the next preview request re-renders but never returns a cached frame.
+      editorProjectHash = editorHash(editorProject);
+      renderEditorTimeline();
+      renderEditorInspector();
+      editorStatus('Timing applied - press Save project to persist.');
+      seekEditorFrame(editorFrame);
+    }
+
+    function editorApplyInspectorParams() {
+      const clip = editorSelectedClip();
+      const textarea = document.getElementById('editor-clip-params');
+      if (!clip || !textarea) return;
+      const result = editorApplyParams(clip, textarea.value);
+      if (!result.ok) {
+        const issuesNode = document.getElementById('editor-inspector-issues');
+        if (issuesNode) issuesNode.textContent = 'Params error: ' + result.error;
+        editorStatus('Params not applied: ' + result.error);
+        return;
+      }
+      editorProjectHash = editorHash(editorProject);
+      renderEditorInspector();
+      editorStatus('Params applied (content.json) - visible in the preview frame.');
+      seekEditorFrame(editorFrame);
     }
 
     // Load the project document the preview is rendered from.
@@ -1744,9 +1995,11 @@
         editorCache.clear();
         const zoomField = document.getElementById('editor-zoom');
         if (zoomField) zoomField.value = String(editorZoom);
+        editorSelection = null;
         editorSetFrame(0);
         renderEditorRuler();
         renderEditorTimeline();
+        renderEditorInspector();
         editorStatus('Project loaded. Rendering frame 0...');
         await seekEditorFrame(0);
       } catch (error) {
@@ -1785,7 +2038,7 @@
         const response = await fetch('/api/v1/preview/frame', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ project_path: path, frame: target }),
+          body: JSON.stringify({ project_path: path, frame: target, project: editorProject }),
           signal: controller.signal,
         });
         const payload = await response.json();

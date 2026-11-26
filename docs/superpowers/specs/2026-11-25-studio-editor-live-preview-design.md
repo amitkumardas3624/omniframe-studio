@@ -228,3 +228,96 @@ isolation by tests and the UI by drags.
   passes validate_project with no overlap ERROR
 - unit tests for the timing maths above run through the installed browser
 - tests/test_ui_editor_layout.py and all prior UI suites stay green
+
+
+## Phase 4 - inspector: variables/content JSON + assets (append)
+
+Deliverable per the phase table plus the user request: per-clip timing fields;
+for `code_scene` a text area for `code.params` (the content.json shape) with
+`data-composition-variables` keys; and an assets list showing id/kind/path
+from `project.assets`. Exit criteria from the phase table: params edits are
+visible in the preview frame, and schema validation errors are surfaced.
+
+### Gap the phase closes
+
+The Phase 2 preview endpoint (`POST /api/v1/preview/frame`) loads the project
+from disk via `load_project(project_path)`, so an in-memory params edit in the
+browser could never reach the rendered PNG. Phase 4 makes the preview request
+accept an optional in-memory document and renders from that document when it is
+supplied (additive: omitting it keeps current disk-loading behaviour).
+
+### Backend contracts (additive)
+
+- `PreviewFrameRequest` gains `project: dict[str, Any] | None = None`. When
+  present, the document is `OmniProject.model_validate`d (schema errors
+  surface as `E_VALIDATION`) and used instead of the on-disk file; the frame
+  is then a pure function of (in-memory document, frame).
+- New `POST /api/v1/inspector/validate` accepting
+  `{project: <document>}` and returning
+  `summarize(validate_document(document))` - the same struct the existing
+  `/api/v1/projects/validate` returns, but for an arbitrary in-memory doc so
+  the inspector can surface E_CLIP_OVERLAP and friends before saving.
+- The existing save path already returns `E_VALIDATION` on schema rejection.
+
+### Frontend inspector (additive to the editor panel)
+
+- Clicking a clip selects it (`editorSelection`); the inspector then shows its
+  start_frame and duration_frames as number inputs. Applying edits mutates the
+  in-memory project copy (start via editorPlacement, duration via editorTrim),
+  re-renders the timeline, marks dirty, and re-seeks the preview through the new
+  in-memory project path.
+- For a `code_scene` clip a `<textarea>` edits `code.params` as pretty JSON,
+  with a hint listing the `data-composition-variables` keys declared in
+  `code.html`. Apply parses the JSON (invalid JSON or a non-object is shown as
+  an inline error, never applied), writes `code.params`, re-renders, and
+  re-seeks so the params change appears in the frame.
+- An assets list underneath renders id/kind/path for each `project.assets`
+  entry, and a validation area shows issues returned by the preview/validate
+  calls.
+
+### Pure function surface (unit-tested through the browser)
+
+- editorSelectedClip(trackId, clipId)          :: in-memory selection -> clip|null
+- editorTimingFields(clip)                     :: {start_frame, duration_frames}
+- editorParseParamsJson(text)                  :: {ok, params} | {ok:false, error}
+- editorApplyParams(clip, text)                :: surfaces parse/type errors
+- editorCompositionKeys(html)                  :: keys from data-composition-variables
+- editorAssetsRows(project)                    :: [{id, kind, path}] from project.assets
+- editorValidateIssues(issues)                 :: schema-error lines, errors only
+
+### Exit criteria
+
+- backend: preview with an in-memory doc whose code.params.text differs from
+  the on-disk doc yields a different PNG vs the disk-loaded preview; an invalid
+  in-memory doc is rejected with E_VALIDATION
+- backend: /api/v1/inspector/validate reports structured issues (E_CLIP_OVERLAP)
+  for an overlapping in-memory doc and ok for a clean one
+- frontend: params edits and timing edits round-trip through the in-memory
+  project into the preview frame; schema/parse errors are rendered inline
+- tests/test_ui_a11y.py and all prior UI suites stay green
+
+### Verification (what was actually run)
+
+- `tests/test_ui_inspector_api.py` (4 tests) - the preview request with an
+  in-memory document whose `code.params.text` differs from disk returns a
+  different PNG than the disk-loaded preview; a malformed in-memory document
+  returns `E_VALIDATION`; `/api/v1/inspector/validate` reports `E_CLIP_OVERLAP`
+  as an `error` for an overlapping document and `ok: true` for a clean one.
+- `tests/test_ui_inspector_math.py` (9 tests) - the pure helpers, called
+  inside the installed Chromium through the served page: selection resolution,
+  timing fields, params JSON parse/apply (including rejection of bad JSON and of
+  a non-object), composition keys, assets rows, issue filtering.
+- All prior suites stay green (timeline math, round-trip, editor layout, editor,
+  a11y, server); full repo suite exits 0 with the one Chromium-marked skip.
+- Live check in the user's own Chromium against the served `/ui`: loading
+  `examples/code-explainer/project.json` reaches `render_tested`, selecting the
+  `intro` clip populates timing + the params text area (seeded `{}`) +
+  `Composition keys (data-composition-variables): none declared`, applying
+  `{"text": "PHASE4-VISIBLE"}` makes the next preview request carry that document
+  (`sentProjectParams`), and the same request with the stub backend returns a
+  byte-different PNG (`pngsDiffer: true`). An overlapping sibling surfaces
+  `E_CLIP_OVERLAP` in the inspector panel, not only in the API.
+- Level: `render_tested` for the preview frame; the params-to-PNG effect is
+  `import_tested` on the stub backend, by design - the code-explainer template
+  does not read `params`, so a real Chromium frame is pixel-identical until a
+  template consumes `window.__OMNIFRAME_PARAMS__`.
