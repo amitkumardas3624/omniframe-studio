@@ -69,6 +69,7 @@ def test_current_builtin_action_names_are_stable():
         "checkpoint.list",
         "checkpoint.restore",
         "checkpoint.save",
+        "compare.frames",
         "compose.video",
         "engine.route",
         "environment.detect",

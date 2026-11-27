@@ -44,6 +44,7 @@ PANEL_TITLES = {
     "actions": "Actions",
     "jobs": "Jobs",
     "timeline": "Timeline",
+    "compare": "Compare",
 }
 
 #: Panels added by the Phase 4 tasks; the gate names these four explicitly.

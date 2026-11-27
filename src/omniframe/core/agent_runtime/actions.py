@@ -13,7 +13,7 @@ from pathlib import Path
 from typing import Any
 
 from ..config import detect_environment, get_config
-from ..errors import ValidationError
+from ..errors import EngineUnavailable, ValidationError
 from ..logging import get_logger
 from .checkpoint import CheckpointStore, diff_projects
 from .inspect import (
@@ -537,6 +537,110 @@ def register_builtin_actions(registry: ActionRegistry | None = None) -> ActionRe
         return diff_projects(
             load_project(_project_path(before)), load_project(_project_path(after))
         )
+
+    # -- compare gate ---------------------------------------------------
+    @reg.action(
+        "compare.frames",
+        description="Render frame pairs against a reference reel and report the 7A gate verdict.",
+        input_schema={
+            "type": "object",
+            "properties": {
+                "project": {"type": "string", "description": "Path to the project file."},
+                "frames": {
+                    "type": "array",
+                    "items": {"type": "integer"},
+                    "description": "Frames to compare; defaults to frame 0.",
+                    "default": [0],
+                },
+                "reference_video": {"type": ["string", "null"], "default": None},
+                "reference_frames_dir": {"type": ["string", "null"], "default": None},
+                "width": {"type": ["integer", "null"], "default": None},
+                "height": {"type": ["integer", "null"], "default": None},
+                "backend": {"type": "string", "default": "stub"},
+            },
+            "required": ["project"],
+        },
+        output_schema={"type": "object"},
+        engine="compositor",
+        error_codes=("E_VALIDATION", "E_RENDER", "E_ENGINE_UNAVAILABLE"),
+        tags=("compare", "gate"),
+    )
+    def compare_frames(
+        project: str,
+        frames: list[int] | None = None,
+        reference_video: str | None = None,
+        reference_frames_dir: str | None = None,
+        width: int | None = None,
+        height: int | None = None,
+        backend: str = "stub",
+    ) -> dict[str, Any]:
+        """Render the frames once each and gate them against the reference.
+
+        The frame bytes are dropped from the result on purpose: an action
+        result is read by a CLI, an MCP client and the Studio panel, and none
+        of them wants several megabytes of base64 for a verdict that is four
+        lists. The HTTP endpoint keeps the bytes for the image pairs.
+        """
+
+        from ...engines.compositor.compare import build_compare
+        from ..timeline_schema.io import load_project
+
+        try:
+            # Reused rather than copied: one implementation of the
+            # frame-override trick keeps the action and the preview honest.
+            from ...backend.server import _render_preview_frame as render_preview_frame
+        except ImportError as exc:
+            raise EngineUnavailable(
+                "compare.frames needs the preview renderer from the ui extra."
+            ) from exc
+
+        path = _project_path(project)
+        document = load_project(path)
+        total = int(document.meta.duration_frames)
+        wanted = [int(frame) for frame in (frames or [0])]
+        for frame in wanted:
+            if frame < 0 or frame >= total:
+                raise ValidationError(
+                    "Compare frame is outside the project range.",
+                    frame=frame,
+                    duration_frames=total,
+                )
+
+        report = build_compare(
+            wanted,
+            render_frame=lambda frame: render_preview_frame(
+                document, frame, width, height, backend
+            ),
+            project_path=path,
+            project_fps=float(document.meta.fps),
+            total_frames=total,
+            reference_video=reference_video,
+            reference_frames_dir=reference_frames_dir,
+            width=width,
+            height=height,
+            backend=backend,
+        )
+        return {
+            "project_path": report.get("project_path"),
+            "total_frames": report.get("total_frames"),
+            "reference_supplied": report.get("reference_supplied"),
+            "reference_kind": report.get("reference_kind"),
+            "reference_fps": report.get("reference_fps"),
+            "frames": [
+                {
+                    "frame": row.get("frame"),
+                    "reference_frame": row.get("reference_frame"),
+                    "diff": row.get("diff"),
+                    "verification_level": row.get("verification_level"),
+                }
+                for row in report.get("frames") or []
+            ],
+            "checklist": [
+                {"id": item.get("id"), "status": item.get("status")}
+                for item in report.get("checklist") or []
+            ],
+            "verdict": report.get("verdict"),
+        }
 
     return reg
 

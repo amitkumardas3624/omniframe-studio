@@ -243,6 +243,82 @@
       }
     },
     {
+      "name": "compare.frames",
+      "description": "Render frame pairs against a reference reel and report the 7A gate verdict.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "project": {
+            "type": "string",
+            "description": "Path to the project file."
+          },
+          "frames": {
+            "type": "array",
+            "items": {
+              "type": "integer"
+            },
+            "description": "Frames to compare; defaults to frame 0.",
+            "default": [
+              0
+            ]
+          },
+          "reference_video": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "default": null
+          },
+          "reference_frames_dir": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "default": null
+          },
+          "width": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "default": null
+          },
+          "height": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "default": null
+          },
+          "backend": {
+            "type": "string",
+            "default": "stub"
+          }
+        },
+        "required": [
+          "project"
+        ]
+      },
+      "outputSchema": {
+        "type": "object"
+      },
+      "meta": {
+        "engine": "compositor",
+        "mutating": false,
+        "idempotent": true,
+        "preconditions": [],
+        "error_codes": [
+          "E_VALIDATION",
+          "E_RENDER",
+          "E_ENGINE_UNAVAILABLE"
+        ],
+        "tags": [
+          "compare",
+          "gate"
+        ]
+      }
+    },
+    {
       "name": "compose.video",
       "description": "Assemble PNG frames into a video with FFmpeg.",
       "inputSchema": {

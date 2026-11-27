@@ -47,7 +47,7 @@ def test_tools_endpoint_returns_registered_actions() -> None:
     assert response.status_code == 200
     payload = response.json()
     assert payload["success"] is True
-    assert len(payload["result"]["tools"]) == 19
+    assert len(payload["result"]["tools"]) == 20
     assert payload["result"]["tools"][0]["name"]
 
 

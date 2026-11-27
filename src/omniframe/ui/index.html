@@ -355,6 +355,73 @@
       opacity: 1;
     }
 
+    /* Compare gate: reference frame beside the rendered frame. */
+    .compare-pair {
+      margin: 0 0 12px;
+      padding: 8px;
+      border: 1px solid rgba(138, 143, 152, 0.28);
+      border-radius: 8px;
+    }
+
+    .compare-pair-label {
+      font-size: 12px;
+      color: #8a8f98;
+      margin-bottom: 6px;
+    }
+
+    .compare-pair-images {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 8px;
+    }
+
+    .compare-pair-images img {
+      display: block;
+      width: 100%;
+      height: auto;
+      border-radius: 4px;
+      background: #0b0a0f;
+    }
+
+    .compare-pair-missing {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 56px;
+      border: 1px dashed rgba(138, 143, 152, 0.4);
+      border-radius: 4px;
+      font-size: 12px;
+      color: #8a8f98;
+    }
+
+    .compare-checklist {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 12px;
+    }
+
+    .compare-checklist th,
+    .compare-checklist td {
+      padding: 4px 6px;
+      text-align: left;
+      vertical-align: top;
+      border-bottom: 1px solid rgba(138, 143, 152, 0.22);
+    }
+
+    .compare-verdict {
+      margin: 8px 0;
+      font-size: 13px;
+      font-weight: 600;
+    }
+
+    .compare-verdict.is-ok {
+      color: #2f9e6f;
+    }
+
+    .compare-verdict.is-fail {
+      color: #ff5722;
+    }
+
     /* Tables */
     .data-table {
       width: 100%;
@@ -1072,6 +1139,14 @@
             </svg>
             Timeline
           </a>
+
+          <a href="#" class="nav-link" data-panel="compare">
+            <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true" focusable="false">
+              <rect x="3" y="5" width="7" height="14" rx="1"/>
+              <rect x="14" y="5" width="7" height="14" rx="1"/>
+            </svg>
+            Compare
+          </a>
         </nav>
       </div>
 
@@ -1233,6 +1308,50 @@
           <button class="tool-run mt-2" type="button" onclick="loadTimeline()">Inspect Timeline</button>
         </div>
         <div id="timeline-list" class="text-sm text-muted" aria-live="polite">Enter a project file path to inspect its tracks and clips.</div>
+      </div>
+    </section>
+
+    <section class="panel" id="compare-panel" aria-labelledby="compare-panel-title" style="position: fixed; left: 260px; right: 0; top: 64px; bottom: 64px; width: auto; height: auto; overflow: auto; display: none;">
+      <div class="panel-header">
+        <h2 class="panel-title" id="compare-panel-title">Compare</h2>
+        <button class="panel-close" type="button" aria-label="Close panel">&times;</button>
+      </div>
+      <div id="compare-content">
+        <p class="text-sm text-muted mb-2">Compare frames the reference reel against this project output, then write the gate record.</p>
+        <div class="mb-2">
+          <label class="text-sm text-muted block mb-1" for="compare-project-path">Project path</label>
+          <input id="compare-project-path" class="block w-full rounded border px-2 py-1 text-sm" type="text" placeholder="examples/motion-reel-template" />
+        </div>
+        <div class="mb-2">
+          <label class="text-sm text-muted block mb-1" for="compare-frames">Frames (comma separated)</label>
+          <input id="compare-frames" class="block w-full rounded border px-2 py-1 text-sm" type="text" value="60, 180, 300, 400, 495, 700, 840" />
+        </div>
+        <div class="mb-2">
+          <label class="text-sm text-muted block mb-1" for="compare-reference-video">Reference video (optional)</label>
+          <input id="compare-reference-video" class="block w-full rounded border px-2 py-1 text-sm" type="text" placeholder="reels/motion-reel.mp4" />
+        </div>
+        <div class="mb-2">
+          <label class="text-sm text-muted block mb-1" for="compare-reference-dir">Reference frames directory (optional)</label>
+          <input id="compare-reference-dir" class="block w-full rounded border px-2 py-1 text-sm" type="text" placeholder="reels/motion-reel-frames" />
+        </div>
+        <div class="mb-2">
+          <label class="text-sm text-muted block mb-1" for="compare-backend">Backend</label>
+          <select id="compare-backend" class="block w-full rounded border px-2 py-1 text-sm">
+            <option value="stub">stub</option>
+            <option value="playwright">playwright</option>
+            <option value="auto">auto</option>
+          </select>
+        </div>
+        <div class="mb-2">
+          <button id="compare-run" class="rounded border px-2 py-1 text-sm" type="button">Compare frames</button>
+          <button id="compare-write" class="rounded border px-2 py-1 text-sm" type="button">Write report</button>
+        </div>
+        <div id="compare-status" class="text-sm text-muted mb-2" role="status" hidden></div>
+        <div id="compare-error" class="actions-error-box" role="alert" hidden></div>
+        <div id="compare-verdict" class="compare-verdict"></div>
+        <div id="compare-checklist"></div>
+        <div id="compare-pairs"></div>
+        <div id="compare-report-status" class="text-sm text-muted" role="status" hidden></div>
       </div>
     </section>
 
@@ -1839,6 +1958,398 @@
       renderEditorTimeline();
       updateEditorPlayhead();
       editorStatus('Track removed - press Save project to persist.');
+    }
+
+    // -- Compare gate (Phase 5) -------------------------------------------
+    // The five mechanics of SKILL.md section 7A, in the order compare.py
+    // attests them. The panel and the browser suite both read this list,
+    // so the UI cannot quietly drop a mechanic the backend still checks.
+    var COMPARE_MECHANICS = [
+      "background_shifts",
+      "grid_density",
+      "particle_construction",
+      "3d_focal_objects",
+      "outro_hierarchy",
+    ];
+
+    var compareResult = null;
+
+    // Comma-aware, like the backend parser: "1,,2" is an empty token and
+    // must be rejected rather than silently collapsed into "1,2".
+    function editorParseFrameList(text, total) {
+      var raw = text === undefined || text === null ? "" : String(text).trim();
+      if (!raw) return { ok: false, error: "No frames given." };
+      var tokens = raw.indexOf(",") >= 0 ? raw.split(",") : raw.split(/\s+/);
+      var limit = Number(total);
+      var bounded = isFinite(limit) && limit > 0;
+      var seen = {};
+      var frames = [];
+      for (var i = 0; i < tokens.length; i += 1) {
+        var token = tokens[i].trim();
+        if (!token) return { ok: false, error: "Empty frame in the list." };
+        if (!/^[0-9]+$/.test(token)) {
+          return { ok: false, error: "Not a whole frame number: " + token };
+        }
+        var value = parseInt(token, 10);
+        if (bounded && value >= limit) {
+          return {
+            ok: false,
+            error: "Frame " + value + " is outside 0.." + (limit - 1) + ".",
+          };
+        }
+        if (!seen[value]) {
+          seen[value] = true;
+          frames.push(value);
+        }
+      }
+      if (!frames.length) return { ok: false, error: "No frames given." };
+      frames.sort(function (a, b) { return a - b; });
+      return { ok: true, frames: frames };
+    }
+
+    // A row may be missing from the payload; it then counts as pending, never
+    // as a pass. A limit without a note counts as a failure, because an unnamed
+    // engine limit is indistinguishable from a silent gap (7A item 3).
+    function editorCompareVerdict(rows) {
+      var seen = {};
+      var list = Array.isArray(rows) ? rows : [];
+      for (var i = 0; i < list.length; i += 1) {
+        var row = list[i] || {};
+        var key = String(row.id === undefined || row.id === null ? "" : row.id);
+        seen[key] = {
+          status: String(row.status === undefined || row.status === null ? "" : row.status),
+          note: String(row.note === undefined || row.note === null ? "" : row.note).trim(),
+        };
+      }
+      var pending = [];
+      var gaps = [];
+      var limitsWithoutNote = [];
+      for (var j = 0; j < COMPARE_MECHANICS.length; j += 1) {
+        var id = COMPARE_MECHANICS[j];
+        var entry = seen[id];
+        var attested = entry && (entry.status === "match"
+          || entry.status === "gap" || entry.status === "limit");
+        if (!attested) {
+          pending.push(id);
+        } else if (entry.status === "gap") {
+          gaps.push(id);
+        } else if (entry.status === "limit" && !entry.note) {
+          limitsWithoutNote.push(id);
+        }
+      }
+      return {
+        ok: pending.length === 0 && gaps.length === 0 && limitsWithoutNote.length === 0,
+        pending: pending,
+        gaps: gaps,
+        limits_without_note: limitsWithoutNote,
+      };
+    }
+
+    function editorCompareDiffText(value) {
+      if (value === undefined || value === null || value === "") return "n/a";
+      var number = Number(value);
+      if (!isFinite(number)) return "n/a";
+      return number.toFixed(2);
+    }
+
+    // Pure: the data one pair renders, so the browser suite can assert it
+    // without mounting a DOM and without the panel generating markup strings
+    // (the a11y suite scans this source for real img/input tags).
+    function editorComparePairModel(row) {
+      var r = row || {};
+      var frame = Number(r.frame);
+      return {
+        frame: isFinite(frame) ? frame : null,
+        diff: editorCompareDiffText(r.diff),
+        referenceSrc: r.reference ? "data:image/png;base64," + r.reference : "",
+        currentSrc: r.current ? "data:image/png;base64," + r.current : "",
+      };
+    }
+
+    function compareImageNode(source, alt, missingText) {
+      if (source) {
+        var image = document.createElement("img");
+        image.src = source;
+        image.alt = alt;
+        return image;
+      }
+      var missing = document.createElement("div");
+      missing.className = "compare-pair-missing";
+      missing.textContent = missingText;
+      return missing;
+    }
+
+    function comparePairNode(row) {
+      var model = editorComparePairModel(row);
+      var label = model.frame === null ? "?" : String(model.frame);
+      var figure = document.createElement("figure");
+      figure.className = "compare-pair";
+      figure.setAttribute("data-frame", label);
+      var caption = document.createElement("figcaption");
+      caption.className = "compare-pair-label";
+      caption.textContent = "frame " + label + " - diff " + model.diff;
+      var images = document.createElement("div");
+      images.className = "compare-pair-images";
+      images.appendChild(compareImageNode(
+        model.referenceSrc, "reference frame " + label, "no reference frame"
+      ));
+      images.appendChild(compareImageNode(
+        model.currentSrc, "output frame " + label, "no output frame"
+      ));
+      figure.appendChild(caption);
+      figure.appendChild(images);
+      return figure;
+    }
+
+    function renderComparePairs(frames) {
+      var host = document.getElementById("compare-pairs");
+      if (!host) return;
+      var list = Array.isArray(frames) ? frames : [];
+      host.textContent = "";
+      for (var i = 0; i < list.length; i += 1) {
+        host.appendChild(comparePairNode(list[i]));
+      }
+    }
+
+    function renderCompareChecklist(rows) {
+      var host = document.getElementById("compare-checklist");
+      if (!host) return;
+      var list = Array.isArray(rows) ? rows : [];
+      var allowed = ["unchecked", "match", "limit", "gap"];
+      host.textContent = "";
+      if (!list.length) return;
+      var table = document.createElement("table");
+      table.className = "compare-checklist";
+      var head = document.createElement("thead");
+      var headRow = document.createElement("tr");
+      var titles = ["Mechanic", "Status", "Note"];
+      for (var t = 0; t < titles.length; t += 1) {
+        var th = document.createElement("th");
+        th.textContent = titles[t];
+        headRow.appendChild(th);
+      }
+      head.appendChild(headRow);
+      table.appendChild(head);
+      var body = document.createElement("tbody");
+      for (var i = 0; i < list.length; i += 1) {
+        var row = list[i] || {};
+        var id = String(row.id === undefined || row.id === null ? "" : row.id);
+        var tr = document.createElement("tr");
+        var nameCell = document.createElement("td");
+        var code = document.createElement("code");
+        code.textContent = id;
+        nameCell.appendChild(code);
+        nameCell.appendChild(document.createElement("br"));
+        nameCell.appendChild(document.createTextNode(
+          String(row.label === undefined || row.label === null ? "" : row.label)
+        ));
+        tr.appendChild(nameCell);
+        var statusCell = document.createElement("td");
+        var select = document.createElement("select");
+        select.setAttribute("data-mechanic", id);
+        var current = String(row.status || "unchecked");
+        for (var k = 0; k < allowed.length; k += 1) {
+          var option = document.createElement("option");
+          option.value = allowed[k];
+          option.textContent = allowed[k];
+          if (allowed[k] === current) option.selected = true;
+          select.appendChild(option);
+        }
+        statusCell.appendChild(select);
+        tr.appendChild(statusCell);
+        var noteCell = document.createElement("td");
+        var note = document.createElement("input");
+        note.type = "text";
+        note.setAttribute("data-note", id);
+        note.value = String(row.note === undefined || row.note === null ? "" : row.note);
+        note.placeholder = "why it cannot be pushed further";
+        noteCell.appendChild(note);
+        tr.appendChild(noteCell);
+        body.appendChild(tr);
+      }
+      table.appendChild(body);
+      host.appendChild(table);
+    }
+
+    // The attested checklist is whatever the operator chose in the panel; it is
+    // read back from the DOM so the shown verdict and the written report agree.
+    function compareAttestedRows() {
+      var host = document.getElementById("compare-checklist");
+      var rows = [];
+      if (!host) return rows;
+      var notes = {};
+      var inputs = host.querySelectorAll("input[data-note]");
+      for (var n = 0; n < inputs.length; n += 1) {
+        notes[inputs[n].getAttribute("data-note")] = inputs[n].value;
+      }
+      var selects = host.querySelectorAll("select[data-mechanic]");
+      for (var i = 0; i < selects.length; i += 1) {
+        var id = selects[i].getAttribute("data-mechanic");
+        rows.push({
+          id: id,
+          status: selects[i].value,
+          note: notes[id] || "",
+        });
+      }
+      return rows;
+    }
+
+    function updateCompareVerdict() {
+      var verdict = editorCompareVerdict(compareAttestedRows());
+      var host = document.getElementById("compare-verdict");
+      if (host) {
+        host.classList.toggle("is-ok", verdict.ok);
+        host.classList.toggle("is-fail", !verdict.ok);
+        var parts = [];
+        if (verdict.ok) {
+          parts.push("PASS - every mechanic is attested");
+        } else {
+          parts.push("FAIL - the gate cannot carry a pass yet");
+          if (verdict.pending.length) {
+            parts.push("pending " + verdict.pending.length + ": "
+              + verdict.pending.join(", "));
+          }
+          if (verdict.gaps.length) {
+            parts.push("gaps: " + verdict.gaps.join(", "));
+          }
+          if (verdict.limits_without_note.length) {
+            parts.push("limits with no note: "
+              + verdict.limits_without_note.join(", "));
+          }
+        }
+        host.textContent = parts.join(" - ");
+      }
+      return verdict;
+    }
+
+    function compareField(id, fallback) {
+      var el = document.getElementById(id);
+      return el && typeof el.value === "string" ? el.value.trim() : fallback;
+    }
+
+    async function runCompare() {
+      var projectPath = compareField("compare-project-path", "");
+      if (!projectPath) {
+        compareError("Choose a project first.");
+        return;
+      }
+      var total = compareResult ? compareResult.total_frames : undefined;
+      var parsed = editorParseFrameList(
+        compareField("compare-frames", ""),
+        total
+      );
+      if (!parsed.ok) {
+        compareError(parsed.error);
+        return;
+      }
+      compareError("");
+      compareStatus("Rendering " + parsed.frames.length + " frame(s)...");
+      var body = {
+        project_path: projectPath,
+        frames: parsed.frames,
+        backend: compareField("compare-backend", "stub") || "stub",
+      };
+      var video = compareField("compare-reference-video", "");
+      if (video) body.reference_video = video;
+      var directory = compareField("compare-reference-dir", "");
+      if (directory) body.reference_frames_dir = directory;
+      try {
+        var response = await fetch("/api/v1/compare/frames", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(body),
+        });
+        var payload = await response.json();
+        if (!response.ok || !payload.success) {
+          compareError(
+            payload.error || "Compare failed with status " + response.status + "."
+          );
+          compareStatus("");
+          return;
+        }
+        compareResult = payload.result;
+        renderComparePairs(compareResult.frames);
+        renderCompareChecklist(compareResult.checklist);
+        var verdict = updateCompareVerdict();
+        var source = compareResult.reference_supplied
+          ? String(compareResult.reference_kind || "reference")
+          : "no reference supplied";
+        compareStatus(
+          "Compared " + parsed.frames.length + " frame(s) - " + source
+          + (verdict.ok ? " - gate can pass" : " - gate still failing")
+        );
+      } catch (error) {
+        compareError(
+          "Compare request failed: "
+          + (error && error.message ? error.message : error)
+        );
+        compareStatus("");
+      }
+    }
+
+    async function writeCompareReport() {
+      if (!compareResult) {
+        compareError("Compare some frames before writing the report.");
+        return;
+      }
+      compareError("");
+      var verdict = updateCompareVerdict();
+      var record = Object.assign({}, compareResult);
+      record.checklist = compareAttestedRows();
+      record.verdict = verdict;
+      compareStatus("Writing the gate record...");
+      try {
+        var response = await fetch("/api/v1/compare/report", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            project_path: compareResult.project_path,
+            compare: record,
+          }),
+        });
+        var payload = await response.json();
+        if (!response.ok || !payload.success) {
+          compareError(
+            payload.error || "Report failed with status " + response.status + "."
+          );
+          compareStatus("");
+          return;
+        }
+        var result = payload.result || {};
+        var target = result.report_path || "the project folder";
+        var host = document.getElementById("compare-report-status");
+        if (host) {
+          host.hidden = false;
+          host.textContent = "Gate record written to " + target + ".";
+        }
+        compareStatus("Report written.");
+      } catch (error) {
+        compareError(
+          "Report request failed: "
+          + (error && error.message ? error.message : error)
+        );
+        compareStatus("");
+      }
+    }
+
+    var compareRunButton = document.getElementById("compare-run");
+    if (compareRunButton) {
+      compareRunButton.addEventListener("click", runCompare);
+    }
+
+    var compareWriteButton = document.getElementById("compare-write");
+    if (compareWriteButton) {
+      compareWriteButton.addEventListener("click", writeCompareReport);
+    }
+
+    var compareChecklistHost = document.getElementById("compare-checklist");
+    if (compareChecklistHost) {
+      compareChecklistHost.addEventListener("change", function () {
+        updateCompareVerdict();
+      });
+      compareChecklistHost.addEventListener("input", function () {
+        updateCompareVerdict();
+      });
     }
 
     function onEditorZoom(value) {
@@ -2646,6 +3157,7 @@
     else if (hash === '#actions') showPanel('actions-panel');
     else if (hash === '#jobs') { showPanel('jobs-panel'); loadJobs(); }
     else if (hash === '#timeline') showPanel('timeline-panel');
+    else if (hash === '#compare') showPanel('compare-panel');
     else showPanel('dashboard-panel'); // default
     
     function showPanel(panelId) {
