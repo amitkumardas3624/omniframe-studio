@@ -321,3 +321,82 @@ supplied (additive: omitting it keeps current disk-loading behaviour).
   `import_tested` on the stub backend, by design - the code-explainer template
   does not read `params`, so a real Chromium frame is pixel-identical until a
   template consumes `window.__OMNIFRAME_PARAMS__`.
+
+
+
+## Phase 5 - compare gate + docs (append)
+
+Deliverable per the phase table: a Compare action that renders the same frame
+numbers from a reference and from the current output side by side, with the
+root SKILL.md section 7A checklist executed against the motion-reel template,
+plus the docs that make the gate repeatable.
+
+### Why the gate is code and not a habit
+
+Section 7A exists because a template once passed JSON, lint and render checks
+while its kinetic layers, grid density, particle construction, 3D sphere and
+outro hierarchy were missing. A checklist that lives only in a document can be
+skipped silently. So the checklist becomes data with a verdict function, and
+the comparison produces a record carrying exact frame numbers.
+
+### Backend contracts (additive)
+
+- src/omniframe/engines/compositor/compare.py
+  - CHECKLIST: the five 7A mechanics as ChecklistItem(id, label, status, note),
+    with status starting at unchecked.
+  - parse_frames(text, total): "0, 120,240" to sorted unique frame integers. An
+    empty list, an empty field, a non-integer and an out-of-range frame are
+    E_VALIDATION rather than a silent substitute.
+  - reference_frame_index(frame, project_fps, reference_fps): the reference
+    frame at the same instant, so a 60 fps reference is sampled at twice the
+    project frame instead of comparing the wrong moments.
+  - reference_fps(video) and extract_reference_frame(video, index, dir):
+    ffprobe rate and exact-frame PNG through ffmpeg; E_ENGINE_UNAVAILABLE when
+    ffmpeg is missing, never a fabricated frame.
+  - mean_abs_diff(first, second): mean absolute RGBA difference 0..255, and
+    None when Pillow is missing, unreadable, or the sizes disagree (no number
+    is better than a wrong number).
+  - verdict(rows): ok only when every 7A mechanic is attested match or limit,
+    no gap remains, and every limit carries a note naming what remains. An
+    unattested row is pending, never a pass.
+  - render_report_markdown(payload): the markdown record of a run, with the
+    frames inspected, the per-mechanic status and the stated engine limits.
+- POST /api/v1/compare/frames accepts project_path, frames, optional
+  reference_video, optional reference_frames_dir, width, height and backend. It
+  renders each project frame and, when a reference is supplied, the reference
+  frame at the same instant, returning per-frame
+  {frame, t, current, reference, reference_frame, diff} plus the checklist and
+  verdict. Exactly one reference source may be given.
+- POST /api/v1/compare/report accepts project_path, compare and an optional
+  output_path, and writes the markdown gate. The default path is
+  <project stem>-compare-gate.md beside the project.
+
+### Frontend (new Compare panel)
+
+- A Compare navigation entry and panel: project path, optional reference video,
+  optional reference PNG directory, frame list, backend and a Compare button.
+- Each returned frame renders as a labelled pair - current output beside the
+  reference at the same instant - with the frame numbers and the pixel gap,
+  never as summary statistics alone.
+- The five 7A mechanics render as rows with a status select (unchecked, match,
+  gap, limit) and a note field; the verdict line states PASS or FAIL, the
+  pending and gap counts, and any limit left without a note.
+- Write report posts the attested run and shows the path it wrote.
+
+### Pure functions (unit-tested through the served page)
+
+- editorParseFrameList(text, total): sorted unique frames, or an error object
+- editorCompareVerdict(rows): ok, pending, gaps, limits_without_note
+- editorComparePairHtml(row): labelled pair markup with frame numbers visible
+
+### Exit criteria
+
+- the gate runs from the editor against a project and returns paired frames for
+  the exact frame numbers asked for, with the pixel gap per pair
+- a reference video is sampled by instant, not by ordinal
+- no pass verdict without all five 7A mechanics attested, and a limit needs a
+  stated note
+- the checklist is executed against the motion-reel template at real frame
+  numbers, and the result - including what could not be attested without the
+  reference reel, and the engine limits - is recorded in docs/compare-gate.md
+- tests/test_ui_a11y.py and all prior suites stay green

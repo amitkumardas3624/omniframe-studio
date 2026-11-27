@@ -125,6 +125,32 @@ class PreviewFrameRequest(BaseModel):
     )
 
 
+class CompareRequest(BaseModel):
+    project_path: str = Field(..., description="Path to project file")
+    frames: list[int] = Field(
+        default_factory=lambda: [0],
+        description="Frame numbers to look at side by side in both outputs",
+    )
+    reference_video: str | None = Field(
+        default=None, description="Optional reference video to compare against"
+    )
+    reference_frames_dir: str | None = Field(
+        default=None, description="Optional directory of reference PNG frames"
+    )
+    width: int | None = Field(default=None, ge=1, description="Override preview width")
+    height: int | None = Field(default=None, ge=1, description="Override preview height")
+    backend: str = Field("stub", description="auto | playwright | stub")
+
+
+class CompareReportRequest(BaseModel):
+    project_path: str = Field(..., description="Project the run belongs to")
+    compare: dict[str, Any] = Field(
+        default_factory=dict, description="Compare result payload to record"
+    )
+    output_path: str | None = Field(
+        default=None, description="Where to write the markdown gate report"
+    )
+
 class JobSubmit(BaseModel):
     kind: str = Field(..., description="Phase 2 job kind (render/compose/translate/validate)")
     payload: dict[str, Any] = Field(default_factory=dict, description="Job parameters")
@@ -448,6 +474,67 @@ def create_app() -> FastAPI:
             LOG.exception("Error rendering preview frame")
             return ActionOutput(success=False, error=str(e), error_code="E_RENDER")
 
+    @app.post("/api/v1/compare/frames", response_model=ActionOutput)
+    async def compare_frames(payload: CompareRequest) -> ActionOutput:
+        """Render the same frame numbers from the output and a reference."""
+
+        from omniframe.engines.compositor.compare import build_compare
+
+        try:
+            project = load_project(payload.project_path)
+
+            def render_frame(frame: int) -> dict[str, Any]:
+                return _render_preview_frame(
+                    project,
+                    frame,
+                    payload.width,
+                    payload.height,
+                    payload.backend,
+                )
+
+            result = await asyncio.to_thread(
+                build_compare,
+                payload.frames,
+                render_frame=render_frame,
+                project_path=payload.project_path,
+                project_fps=float(project.meta.fps),
+                total_frames=int(project.meta.duration_frames),
+                reference_video=payload.reference_video,
+                reference_frames_dir=payload.reference_frames_dir,
+                width=payload.width,
+                height=payload.height,
+                backend=payload.backend,
+            )
+            return ActionOutput(success=True, result=result)
+        except OmniFrameError as e:
+            return ActionOutput(
+                success=False, error=str(e), error_code=getattr(e, "code", "E_RENDER")
+            )
+        except Exception as e:
+            LOG.exception("Error comparing frames")
+            return ActionOutput(success=False, error=str(e), error_code="E_RENDER")
+
+    @app.post("/api/v1/compare/report", response_model=ActionOutput)
+    async def compare_report(payload: CompareReportRequest) -> ActionOutput:
+        """Write the compare gate as markdown beside the project (or where asked)."""
+
+        from omniframe.engines.compositor.compare import render_report_markdown
+
+        compare = dict(payload.compare or {})
+        compare.setdefault("project_path", payload.project_path)
+        text = render_report_markdown(compare)
+        if payload.output_path:
+            target = Path(payload.output_path)
+        else:
+            project = Path(payload.project_path)
+            target = project.with_name(project.stem + "-compare-gate.md")
+        try:
+            target.parent.mkdir(parents=True, exist_ok=True)
+            target.write_text(text, encoding="utf-8")
+        except Exception as e:
+            LOG.exception("Error writing compare gate report")
+            return ActionOutput(success=False, error=str(e), error_code="E_VALIDATION")
+        return ActionOutput(success=True, result={"report_path": str(target)})
     # ── Bridge operations ───────────────────────────────────────────────────
 
     @app.get("/api/v1/bridges")
