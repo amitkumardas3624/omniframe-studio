@@ -326,8 +326,8 @@ POST /api/v1/compare/report
   produced each requested instant.
 - **not tested, not claimed**: equality with the reference reel, which is absent; motion,
   transitions or layering, which one still per mechanic cannot show; the render-compare path
-  end to end against a real reel; and the Studio UI Compare panel, which is not part of this
-  change.
+  end to end against a real reel, and the Studio UI Compare panel, which loads the same
+  verdict but has not itself been driven against a real project file in a test.
 - **not claimed**: that the editor is done. By the opening of 7A - decompiling into JSON,
   passing lint and rendering a frame sequence prove only that the pipeline runs - the pass
   this document would need to grant has not been earned, so it reports FAIL.
