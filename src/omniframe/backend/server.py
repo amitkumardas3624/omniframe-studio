@@ -519,18 +519,46 @@ def create_app() -> FastAPI:
         """Write the compare gate as markdown beside the project (or where asked)."""
 
         from omniframe.engines.compositor.compare import render_report_markdown
+        from omniframe.engines.compositor.compare import verdict as compute_verdict
+        from omniframe.jobs.safety import ensure_within
 
         compare = dict(payload.compare or {})
         compare.setdefault("project_path", payload.project_path)
-        text = render_report_markdown(compare)
-        if payload.output_path:
-            target = Path(payload.output_path)
-        else:
-            project = Path(payload.project_path)
-            target = project.with_name(project.stem + "-compare-gate.md")
+        checklist = [dict(row) for row in (compare.get("checklist") or [])]
+        if checklist:
+            # The verdict is computed here and never taken from the request: a
+            # client must not be able to write a PASS it did not earn.
+            compare["checklist"] = checklist
+            compare["verdict"] = compute_verdict(checklist)
+        for row in compare.get("frames") or []:
+            try:
+                int(row.get("frame") or 0)
+            except (TypeError, ValueError):
+                return ActionOutput(
+                    success=False,
+                    error="Compare row has a non-numeric frame.",
+                    error_code="E_VALIDATION",
+                )
         try:
+            text = render_report_markdown(compare)
+        except Exception as e:
+            LOG.exception("Error rendering compare gate report")
+            return ActionOutput(success=False, error=str(e), error_code="E_VALIDATION")
+        try:
+            project = Path(payload.project_path)
+            root = project.parent
+            if payload.output_path:
+                target = ensure_within(root, payload.output_path)
+            else:
+                target = ensure_within(
+                    root, project.with_name(project.stem + "-compare-gate.md")
+                )
             target.parent.mkdir(parents=True, exist_ok=True)
             target.write_text(text, encoding="utf-8")
+        except OmniFrameError as e:
+            return ActionOutput(
+                success=False, error=str(e), error_code=getattr(e, "code", "E_VALIDATION")
+            )
         except Exception as e:
             LOG.exception("Error writing compare gate report")
             return ActionOutput(success=False, error=str(e), error_code="E_VALIDATION")

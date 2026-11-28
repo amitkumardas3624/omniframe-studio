@@ -36,7 +36,6 @@ TITLE = "OmniFrame Studio \u2014 Agent & Creator Control Panel"
 
 #: Panel slug -> exact heading text its accessible name must come from.
 PANEL_TITLES = {
-    "dashboard": "Dashboard",
     "projects": "Projects",
     "render": "Render Control",
     "bridges": "DCC Bridges",

@@ -14,9 +14,11 @@ drift from the gate the backend actually applies.
 from __future__ import annotations
 
 import contextlib
+import shutil
 import socket
 import threading
 import time
+from pathlib import Path
 
 import pytest
 
@@ -29,6 +31,8 @@ REQUIRED = [
     "editorCompareVerdict",
     "editorCompareDiffText",
     "editorComparePairModel",
+    "compareStatus",
+    "compareError",
     "updateCompareVerdict",
     "runCompare",
     "writeCompareReport",
@@ -301,7 +305,7 @@ def test_frame_parsing_agrees_with_backend(_compare):
     from omniframe.core.errors import ValidationError
     from omniframe.engines.compositor.compare import parse_frames
 
-    for text in ("0, 120", "5 6 7", "1,,2", "", "abc", "900"):
+    for text in PARITY_TOKENS:
         try:
             expected = parse_frames(text, 900)
             parsed_ok = True
@@ -318,5 +322,111 @@ def test_verdict_agrees_with_backend(_compare):
     from omniframe.engines.compositor.compare import CHECKLIST
     from omniframe.engines.compositor.compare import verdict as backend_verdict
 
-    rows = [item.to_dict() for item in CHECKLIST]
-    assert _verdict(_compare, rows) == backend_verdict(rows)
+    cases = [
+        [item.to_dict() for item in CHECKLIST],
+        [dict(item.to_dict(), status="match") for item in CHECKLIST],
+        [
+            dict(item.to_dict(), status="gap" if item.id == CHECKLIST[1].id else "match")
+            for item in CHECKLIST
+        ],
+        [
+            dict(item.to_dict(), status="limit" if item.id == CHECKLIST[2].id else "match")
+            for item in CHECKLIST
+        ],
+    ]
+    for rows in cases:
+        assert _verdict(_compare, rows) == backend_verdict(rows), rows
+
+
+# -- review fixes: the panel actually runs, and both parsers agree --------
+
+
+#: Tokens the browser parser and the backend parser must agree on. Every
+#: one of these was either accepted by one side only or silently folded.
+PARITY_TOKENS = (
+    "0",
+    "3",
+    "007",
+    " 4 ",
+    "1, 2",
+    "1,2,3",
+    "  5  ,  6 ",
+    "5 6 7",
+    "+3",
+    "1_0",
+    "\u0663",
+    "1, 2 3",
+    "1,,2",
+    "",
+    "   ",
+    "abc",
+    "-1",
+    "1.5",
+    "0x10",
+    "1e2",
+    ",",
+    "900",
+)
+
+
+def _code_explainer(tmp_path: Path) -> Path:
+    source = (
+        Path(__file__).resolve().parents[1] / "examples" / "code-explainer" / "project.json"
+    )
+    target = tmp_path / "project.json"
+    shutil.copyfile(source, target)
+    return target
+
+
+def test_run_compare_actually_runs_and_paints_the_panel(
+    _compare, tmp_path: Path
+) -> None:
+    """The panel has to work in a browser, not only in unit tests.
+
+    A handler that throws before the request is sent leaves the panel blank
+    and every unit test green, so this drives the real function against the
+    real server and looks at what it painted.
+    """
+
+    page = _compare
+    project = _code_explainer(tmp_path)
+    page.evaluate(
+        "(path) => {"
+        " document.getElementById('compare-project-path').value = path;"
+        " document.getElementById('compare-frames').value = '0, 12';"
+        " document.getElementById('compare-backend').value = 'stub';"
+        " return true;"
+        " }",
+        str(project),
+    )
+    page.evaluate("() => runCompare()")
+
+    verdict = page.text_content("#compare-verdict")
+    assert "FAIL" in verdict, verdict
+    painted = page.eval_on_selector_all("#compare-pairs figure", "els => els.length")
+    assert painted == 2, painted
+    status = page.text_content("#compare-status")
+    assert "frame(s)" in status, status
+
+
+def test_write_compare_report_writes_the_record(_compare, tmp_path: Path) -> None:
+    page = _compare
+    project = _code_explainer(tmp_path)
+    page.evaluate(
+        "(path) => {"
+        " document.getElementById('compare-project-path').value = path;"
+        " document.getElementById('compare-frames').value = '0';"
+        " document.getElementById('compare-backend').value = 'stub';"
+        " return true;"
+        " }",
+        str(project),
+    )
+    page.evaluate("() => runCompare()")
+    page.evaluate("() => writeCompareReport()")
+
+    report = page.text_content("#compare-report-status")
+    assert "written" in report.lower(), report
+    written = list(tmp_path.glob("*-compare-gate.md"))
+    assert written, sorted(p.name for p in tmp_path.iterdir())
+    body = written[0].read_text(encoding="utf-8").lower()
+    assert "compare gate" in body, body

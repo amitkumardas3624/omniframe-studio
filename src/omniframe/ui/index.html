@@ -83,7 +83,7 @@
     .app-container {
       display: grid;
       grid-template-columns: 260px 1fr;
-      grid-template-rows: 64px 1fr 64px;
+      grid-template-rows: 64px 1fr;
       gap: 0;
       height: 100vh;
     }
@@ -208,7 +208,7 @@
 
     .workspace-overview,
     .tool-inspector {
-      max-width: 760px;
+      max-width: 1100px;
       margin: 1rem auto;
       padding: 1.5rem;
       background: var(--card);
@@ -257,7 +257,7 @@
 
     .doctor-summary ul {
       display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
       gap: 0.4rem 1rem;
       margin: 0;
       padding-left: 1.25rem;
@@ -604,17 +604,32 @@
       -webkit-font-smoothing: antialiased;
     }
 
-    /* Panels keep their own frame and readable contrast without Tailwind. */
+    /* Panels dock into the workspace area beside the sidebar instead of
+       floating over it; showPanel() sets display when it opens one. */
     .panel {
+      display: none;
+      position: fixed;
+      left: 260px;
+      right: 0;
+      top: 64px;
+      bottom: 0;
+      width: auto;
+      height: auto;
+      margin: 12px;
+      overflow: auto;
       background: var(--card);
       color: var(--fg);
       border: 1px solid var(--border);
       border-radius: 8px;
       padding: 1rem;
       max-width: 100%;
-      overflow-x: auto;
       font-size: 0.85rem;
       line-height: 1.5;
+    }
+
+    #editor-panel {
+      flex-direction: column;
+      overflow: hidden;
     }
 
     .panel-title {
@@ -800,7 +815,8 @@
         "preview-left inspector-right"
         "timeline-bottom timeline-bottom";
       gap: 14px;
-      min-height: calc(100vh - 200px);
+      flex: 1 1 auto;
+      min-height: 0;
     }
 
     .editor-region {
@@ -1089,7 +1105,7 @@
           <a href="#" class="nav-link" data-panel="render">
             <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="current" stroke-width="1.5" aria-hidden="true" focusable="false">
               <circle cx="12" cy="12" r="3"/>
-              <path d="M2 12l20"/>
+              <path d="M2 12h20"/>
               <path d="M2 12l6.86-6.86"/>
             </svg>
             Render
@@ -1189,22 +1205,8 @@
       </div>
     </main>
 
-    <!-- Panels (floating above main) -->
-    <section class="panel" id="dashboard-panel" aria-labelledby="dashboard-panel-title" style="position: fixed; right: 0; top: 64px; width: 400px; height: calc(100vh - 128px); overflow-y: auto;">
-      <div class="panel-header">
-        <h2 class="panel-title" id="dashboard-panel-title">Dashboard</h2>
-        <button class="panel-close" type="button" aria-label="Close panel">&times;</button>
-      </div>
-      <div id="dashboard-content">
-        <div style="color: var(--muted); font-size: 0.9rem;">
-          <div>OmniFrame Studio Dashboard</div>
-          <div class="mt-2" id="dashboard-doctor-status">Waiting for environment check...</div>
-          <button class="btn btn-acent mt-2" type="button" onclick="runDoctor(this)">Run Doctor</button>
-        </div>
-      </div>
-    </section>
-
-    <section class="panel" id="projects-panel" aria-labelledby="projects-panel-title" style="position: fixed; right: 0; top: 64px; width: 400px; height: calc(100vh - 128px); overflow-y: auto; display: none;">
+    <!-- Panels dock into the workspace area beside the sidebar. -->
+    <section class="panel" id="projects-panel" aria-labelledby="projects-panel-title">
       <div class="panel-header">
         <h2 class="panel-title" id="projects-panel-title">Projects</h2>
         <button class="panel-close" type="button" aria-label="Close panel">&times;</button>
@@ -1214,7 +1216,7 @@
       </div>
     </section>
 
-    <section class="panel" id="render-panel" aria-labelledby="render-panel-title" style="position: fixed; right: 0; top: 64px; width: 400px; height: calc(100vh - 128px); overflow-y: auto; display: none;">
+    <section class="panel" id="render-panel" aria-labelledby="render-panel-title"">
       <div class="panel-header">
         <h2 class="panel-title" id="render-panel-title">Render Control</h2>
         <button class="panel-close" type="button" aria-label="Close panel">&times;</button>
@@ -1229,7 +1231,7 @@
       </div>
     </section>
 
-    <section class="panel" id="bridges-panel" aria-labelledby="bridges-panel-title" style="position: fixed; right: 0; top: 64px; width: 400px; height: calc(100vh - 128px); overflow-y: auto; display: none;">
+    <section class="panel" id="bridges-panel" aria-labelledby="bridges-panel-title"">
       <div class="panel-header">
         <h2 class="panel-title" id="bridges-panel-title">DCC Bridges</h2>
         <button class="panel-close" type="button" aria-label="Close panel">&times;</button>
@@ -1243,7 +1245,7 @@
       </div>
     </section>
 
-    <section class="panel" id="inspection-panel" aria-labelledby="inspection-panel-title" style="position: fixed; right: 0; top: 64px; width: 400px; height: calc(100vh - 128px); overflow-y: auto; display: none;">
+    <section class="panel" id="inspection-panel" aria-labelledby="inspection-panel-title"">
       <div class="panel-header">
         <h2 class="panel-title" id="inspection-panel-title">Inspection</h2>
         <button class="panel-close" type="button" aria-label="Close panel">&times;</button>
@@ -1259,7 +1261,7 @@
       </div>
     </section>
 
-    <section class="panel" id="actions-panel" aria-labelledby="actions-panel-title" style="position: fixed; right: 0; top: 64px; width: 400px; height: calc(100vh - 128px); overflow-y: auto; display: none;">
+    <section class="panel" id="actions-panel" aria-labelledby="actions-panel-title"">
       <div class="panel-header">
         <h2 class="panel-title" id="actions-panel-title">Actions</h2>
         <button class="panel-close" type="button" aria-label="Close panel">&times;</button>
@@ -1271,7 +1273,7 @@
       </div>
     </section>
 
-    <section class="panel" id="jobs-panel" aria-labelledby="jobs-panel-title" style="position: fixed; right: 0; top: 64px; width: 400px; height: calc(100vh - 128px); overflow-y: auto; display: none;">
+    <section class="panel" id="jobs-panel" aria-labelledby="jobs-panel-title"">
       <div class="panel-header">
         <h2 class="panel-title" id="jobs-panel-title">Jobs</h2>
         <button class="panel-close" type="button" aria-label="Close panel">&times;</button>
@@ -1295,7 +1297,7 @@
       </div>
     </section>
 
-    <section class="panel" id="timeline-panel" aria-labelledby="timeline-panel-title" style="position: fixed; right: 0; top: 64px; width: 400px; height: calc(100vh - 128px); overflow-y: auto; display: none;">
+    <section class="panel" id="timeline-panel" aria-labelledby="timeline-panel-title"">
       <div class="panel-header">
         <h2 class="panel-title" id="timeline-panel-title">Timeline</h2>
         <button class="panel-close" type="button" aria-label="Close panel">&times;</button>
@@ -1311,7 +1313,7 @@
       </div>
     </section>
 
-    <section class="panel" id="compare-panel" aria-labelledby="compare-panel-title" style="position: fixed; left: 260px; right: 0; top: 64px; bottom: 64px; width: auto; height: auto; overflow: auto; display: none;">
+    <section class="panel" id="compare-panel" aria-labelledby="compare-panel-title"">
       <div class="panel-header">
         <h2 class="panel-title" id="compare-panel-title">Compare</h2>
         <button class="panel-close" type="button" aria-label="Close panel">&times;</button>
@@ -1355,7 +1357,7 @@
       </div>
     </section>
 
-    <section class="panel" id="editor-panel" aria-labelledby="editor-panel-title" style="position: fixed; left: 260px; right: 0; top: 64px; bottom: 64px; width: auto; height: auto; overflow: auto; display: none;">
+    <section class="panel" id="editor-panel" aria-labelledby="editor-panel-title"">
       <div class="panel-header">
         <h2 class="panel-title" id="editor-panel-title">Editor</h2>
         <button class="panel-close" type="button" aria-label="Close panel">&times;</button>
@@ -2055,6 +2057,56 @@
     // Pure: the data one pair renders, so the browser suite can assert it
     // without mounting a DOM and without the panel generating markup strings
     // (the a11y suite scans this source for real img/input tags).
+    // The two hosts the panel writes into. They were missing from the
+    // first build of this block, which made every click throw a
+    // ReferenceError before a single request was sent.
+    // The frame count of the loaded project, so the panel can refuse an
+    // out-of-range frame before sending it. Cached per project path; the
+    // server still enforces the range.
+    var compareTotalFrames = null;
+    var compareTotalPath = null;
+
+    async function compareProjectTotal(path) {
+      if (!path) return null;
+      if (compareTotalPath === path && compareTotalFrames !== null) {
+        return compareTotalFrames;
+      }
+      try {
+        const response = await fetch("/api/v1/projects/get", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ project_path: path }),
+        });
+        const payload = await response.json();
+        if (!response.ok || !payload.success) return null;
+        const project = payload.result && payload.result.project;
+        const meta = project && project.meta;
+        const total = meta ? Number(meta.duration_frames) : null;
+        if (total && isFinite(total)) {
+          compareTotalPath = path;
+          compareTotalFrames = total;
+          return total;
+        }
+      } catch (error) {
+        return null;
+      }
+      return null;
+    }
+
+    function compareStatus(message) {
+      var el = document.getElementById("compare-status");
+      if (!el) return;
+      el.hidden = false;
+      el.textContent = message;
+    }
+
+    function compareError(message) {
+      var el = document.getElementById("compare-error");
+      if (!el) return;
+      el.hidden = !message;
+      el.textContent = message || "";
+    }
+
     function editorComparePairModel(row) {
       var r = row || {};
       var frame = Number(r.frame);
@@ -2062,6 +2114,7 @@
         frame: isFinite(frame) ? frame : null,
         diff: editorCompareDiffText(r.diff),
         referenceSrc: r.reference ? "data:image/png;base64," + r.reference : "",
+        referenceFile: r.reference_file || "",
         currentSrc: r.current ? "data:image/png;base64," + r.current : "",
       };
     }
@@ -2087,7 +2140,8 @@
       figure.setAttribute("data-frame", label);
       var caption = document.createElement("figcaption");
       caption.className = "compare-pair-label";
-      caption.textContent = "frame " + label + " - diff " + model.diff;
+      caption.textContent = "frame " + label + " - diff " + model.diff
+        + (model.referenceFile ? " - reference " + model.referenceFile : "");
       var images = document.createElement("div");
       images.className = "compare-pair-images";
       images.appendChild(compareImageNode(
@@ -2233,7 +2287,10 @@
         compareError("Choose a project first.");
         return;
       }
-      var total = compareResult ? compareResult.total_frames : undefined;
+      var total = await compareProjectTotal(projectPath);
+      if (total === null && compareResult) {
+        total = compareResult.total_frames;
+      }
       var parsed = editorParseFrameList(
         compareField("compare-frames", ""),
         total
@@ -2274,10 +2331,19 @@
         var source = compareResult.reference_supplied
           ? String(compareResult.reference_kind || "reference")
           : "no reference supplied";
+        var extracted = Number(compareResult.reference_frames_extracted || 0);
+        var wanted = Number(compareResult.reference_frames_requested || 0);
+        var referenceNote = compareResult.reference_supplied
+          ? " - " + extracted + " of " + wanted + " reference frame(s) read"
+          : "";
         compareStatus(
-          "Compared " + parsed.frames.length + " frame(s) - " + source
+          "Compared " + parsed.frames.length + " frame(s) - " + source + referenceNote
           + (verdict.ok ? " - gate can pass" : " - gate still failing")
         );
+        var problems = compareResult.reference_problems || [];
+        if (problems.length) {
+          compareError("Reference problem: " + problems.join("; "));
+        }
       } catch (error) {
         compareError(
           "Compare request failed: "
@@ -2690,6 +2756,9 @@
           if (link.dataset.panel === 'editor') editorStatus('Load a project to begin editing.');
         });
       });
+      document.querySelectorAll('.panel-close').forEach((button) => {
+        button.addEventListener('click', () => showPanel('dashboard-panel'));
+      });
     }
 
     function renderDashboard() {
@@ -2771,6 +2840,7 @@
 
     function inspectTool(tool) {
       selectedTool = tool;
+      showMainView();
       document.getElementById('workspace-overview').hidden = true;
       document.getElementById('tool-inspector').hidden = false;
       document.getElementById('tool-inspector-title').textContent = tool.name;
@@ -2898,7 +2968,6 @@
       statusEl.innerHTML = allGood
         ? '<span class="badge badge-healthy">Environment ready</span>'
         : '<span class="badge badge-critical">Issues detected</span>';
-      document.getElementById('dashboard-doctor-status').textContent = allGood ? 'Environment ready' : 'Issues detected';
       document.getElementById('doctor-capabilities').innerHTML = capabilities.map((capability) => {
         const mark = capability.available ? '✓' : '✗';
         return `<li>${mark} ${capability.name}: ${capability.version || capability.detail || (capability.available ? 'available' : 'missing')}</li>`;
@@ -3002,7 +3071,6 @@
         updateDoctorStatus(await response.json());
       } catch (error) {
         document.getElementById('doctor-status').innerHTML = '<span class="badge badge-critical">Doctor unavailable</span>';
-        document.getElementById('dashboard-doctor-status').textContent = 'Doctor unavailable';
         console.error('Doctor failed:', error);
       } finally {
         buttons.forEach((item) => { item.disabled = false; item.textContent = 'Run Doctor'; });
@@ -3163,14 +3231,21 @@
     function showPanel(panelId) {
       // Hide all panels
       document.querySelectorAll('.panel').forEach(p => p.style.display = 'none');
-      // Show selected
+      // Show selected; the dashboard has no panel and renders in <main>.
       const panel = document.getElementById(panelId);
-      if (panel) panel.style.display = 'block';
+      if (panel) panel.style.display = panelId === 'editor-panel' ? 'flex' : 'block';
+      document.getElementById('main').style.display = panel ? 'none' : '';
       if (panelId === 'dashboard-panel') renderDashboard();
       // Update nav links
       document.querySelectorAll('.nav-link').forEach(link => {
         link.classList.toggle('active', link.dataset.panel === panelId.replace('-panel', ''));
       });
+    }
+
+    function showMainView() {
+      document.querySelectorAll('.panel').forEach(p => p.style.display = 'none');
+      document.getElementById('main').style.display = '';
+      document.querySelectorAll('.nav-link').forEach(link => link.classList.remove('active'));
     }
   </script>
 </body>

@@ -316,3 +316,258 @@ def test_compare_against_a_reference_video_maps_by_instant(
     assert row["reference_frame"] == 20
     assert row["diff"] is not None
     assert row["diff"] > 0
+
+
+# -- review fixes: strict frames, honest references, no wrong-image match ---
+
+
+@pytest.mark.parametrize("text", ["+3", "1_0", "\u0663", "3.0", "1e2", "0x10"])
+def test_parse_frames_rejects_non_plain_digits(text: str) -> None:
+    """Only plain ASCII digits name a frame.
+
+    int() also accepts a sign, underscore separators and other scripts'
+    digits, and the browser parser does not. The two must agree, or the panel
+    and the gate disagree about which frame was asked for.
+    """
+
+    with pytest.raises(ValidationError):
+        parse_frames(text, 90)
+
+
+def test_compare_reports_a_missing_reference_video(
+    project_path: Path, tmp_path: Path
+) -> None:
+    """A reference that cannot be read must not be reported as compared."""
+
+    missing = tmp_path / "no-such-reel.mp4"
+    with TestClient(create_app()) as client:
+        status, payload = _post(
+            client,
+            "/api/v1/compare/frames",
+            {
+                "project_path": str(project_path),
+                "frames": [0],
+                "reference_video": str(missing),
+                "backend": "stub",
+            },
+        )
+
+    assert status == 200
+    assert payload["success"] is False, payload
+    assert payload["error_code"] == "E_VALIDATION", payload
+
+
+def test_compare_reports_a_missing_reference_directory(
+    project_path: Path, tmp_path: Path
+) -> None:
+    missing = tmp_path / "no-such-directory"
+    with TestClient(create_app()) as client:
+        status, payload = _post(
+            client,
+            "/api/v1/compare/frames",
+            {
+                "project_path": str(project_path),
+                "frames": [0],
+                "reference_frames_dir": str(missing),
+                "backend": "stub",
+            },
+        )
+
+    assert status == 200
+    assert payload["success"] is False, payload
+    assert payload["error_code"] == "E_VALIDATION", payload
+
+
+def test_compare_reports_an_empty_reference_directory(
+    project_path: Path, tmp_path: Path
+) -> None:
+    empty = tmp_path / "empty"
+    empty.mkdir()
+    with TestClient(create_app()) as client:
+        status, payload = _post(
+            client,
+            "/api/v1/compare/frames",
+            {
+                "project_path": str(project_path),
+                "frames": [0],
+                "reference_frames_dir": str(empty),
+                "backend": "stub",
+            },
+        )
+
+    assert status == 200
+    assert payload["success"] is False, payload
+    assert payload["error_code"] == "E_VALIDATION", payload
+
+
+def test_reference_frames_match_by_the_frame_in_their_name(
+    project_path: Path, tmp_path: Path
+) -> None:
+    """f060.png is reference frame 60, not "the first file in the folder"."""
+
+    reference_dir = tmp_path / "reference"
+    reference_dir.mkdir()
+    with TestClient(create_app()) as client:
+        (reference_dir / "f060.png").write_bytes(_png_bytes(client, project_path, 60))
+        status, payload = _post(
+            client,
+            "/api/v1/compare/frames",
+            {
+                "project_path": str(project_path),
+                "frames": [0, 60],
+                "reference_frames_dir": str(reference_dir),
+                "backend": "stub",
+            },
+        )
+
+    assert status == 200 and payload["success"] is True, payload
+    rows = {row["frame"]: row for row in payload["result"]["frames"]}
+    assert rows[0]["reference"] is None, rows[0]
+    assert rows[0]["reference_frame"] is None, rows[0]
+    assert rows[60]["reference"], rows[60]
+    assert rows[60]["reference_file"] == "f060.png", rows[60]
+
+
+def test_compare_counts_the_reference_frames_it_really_read(
+    project_path: Path, tmp_path: Path
+) -> None:
+    """A reference folder that covers only some frames is reported as partial."""
+
+    reference_dir = tmp_path / "reference"
+    reference_dir.mkdir()
+    with TestClient(create_app()) as client:
+        (reference_dir / "frame_00000.png").write_bytes(
+            _png_bytes(client, project_path, 0)
+        )
+        status, payload = _post(
+            client,
+            "/api/v1/compare/frames",
+            {
+                "project_path": str(project_path),
+                "frames": [0, 12],
+                "reference_frames_dir": str(reference_dir),
+                "backend": "stub",
+            },
+        )
+
+    assert status == 200 and payload["success"] is True, payload
+    result = payload["result"]
+    assert result["reference_frames_extracted"] == 1, result
+    assert result["reference_frames_requested"] == 2, result
+    assert result["reference_problems"], result
+    rows = {row["frame"]: row for row in result["frames"]}
+    assert rows[0]["reference"], rows[0]
+    assert rows[12]["reference"] is None, rows[12]
+
+
+def test_report_does_not_claim_a_comparison_it_did_not_make(
+    project_path: Path, tmp_path: Path
+) -> None:
+    """The written record must say what was actually compared."""
+
+    reference_dir = tmp_path / "reference"
+    reference_dir.mkdir()
+    with TestClient(create_app()) as client:
+        (reference_dir / "frame_00000.png").write_bytes(
+            _png_bytes(client, project_path, 0)
+        )
+        status, payload = _post(
+            client,
+            "/api/v1/compare/frames",
+            {
+                "project_path": str(project_path),
+                "frames": [0, 12],
+                "reference_frames_dir": str(reference_dir),
+                "backend": "stub",
+            },
+        )
+    out = tmp_path / "gate.md"
+    with TestClient(create_app()) as client:
+        status, report = _post(
+            client,
+            "/api/v1/compare/report",
+            {
+                "project_path": str(project_path),
+                "output_path": str(out),
+                "compare": payload["result"],
+            },
+        )
+
+    assert status == 200 and report["success"] is True, report
+    text = out.read_text(encoding="utf-8")
+    assert "1 of 2" in text, text
+    assert "frame_00000.png" in text, text
+    assert "| frame 12 | n/a |" in text, text
+
+
+def test_report_refuses_a_client_supplied_verdict(
+    project_path: Path, tmp_path: Path
+) -> None:
+    """A PASS must be earned by the checklist, never posted by the client."""
+
+    out = tmp_path / "gate.md"
+    rows = _rows(**{item.id: "unchecked" for item in CHECKLIST})
+    with TestClient(create_app()) as client:
+        status, payload = _post(
+            client,
+            "/api/v1/compare/report",
+            {
+                "project_path": str(project_path),
+                "output_path": str(out),
+                "compare": {
+                    "reference_kind": None,
+                    "reference_path": None,
+                    "frames": [{"frame": 0, "diff": None, "reference_frame": None}],
+                    "checklist": rows,
+                    "verdict": {"ok": True, "pending": [], "gaps": []},
+                },
+            },
+        )
+
+    assert status == 200 and payload["success"] is True, payload
+    text = out.read_text(encoding="utf-8")
+    assert "PASS" not in text, text
+    assert "FAIL" in text, text
+
+
+def test_report_rejects_a_malformed_payload_without_a_server_error(
+    project_path: Path, tmp_path: Path
+) -> None:
+    out = tmp_path / "gate.md"
+    with TestClient(create_app()) as client:
+        status, payload = _post(
+            client,
+            "/api/v1/compare/report",
+            {
+                "project_path": str(project_path),
+                "output_path": str(out),
+                "compare": {"frames": [{"frame": "abc", "diff": "zz"}]},
+            },
+        )
+
+    assert status == 200, status
+    assert payload["success"] is False, payload
+    assert payload["error_code"], payload
+
+
+def test_report_keeps_the_record_inside_the_project_folder(
+    project_path: Path, tmp_path: Path
+) -> None:
+    """A report path outside the project folder is refused."""
+
+    outside = tmp_path.parent / "escaped-gate.md"
+    with TestClient(create_app()) as client:
+        status, payload = _post(
+            client,
+            "/api/v1/compare/report",
+            {
+                "project_path": str(project_path),
+                "output_path": str(outside),
+                "compare": {"frames": []},
+            },
+        )
+
+    assert status == 200, status
+    assert payload["success"] is False, payload
+    assert payload["error_code"] == "E_PATH_SECURITY", payload
+    assert not outside.exists()

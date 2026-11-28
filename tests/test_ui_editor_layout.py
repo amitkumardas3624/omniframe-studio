@@ -95,22 +95,24 @@ def test_editor_panel_is_anchored_to_the_console_grid() -> None:
     """The shell must sit in the main column, not on top of the sidebar.
 
     body declares "grid-template-columns: <sidebar> 1fr" and
-    "grid-template-rows: <header> 1fr <footer>"; the full-bleed editor panel is
-    positioned: fixed, so those exact numbers have to be repeated in its inset.
-    A stale 240px/24px inset silently overlaps the navigation and the status bar.
+    "grid-template-rows: <header> 1fr [<footer>]"; every docked panel is
+    positioned: fixed through the shared .panel rule, so those exact numbers
+    have to be repeated in its inset. A stale 240px/24px inset silently
+    overlaps the navigation and the status bar.
     """
     html = _served_html()
     columns = re.search(r"grid-template-columns:\s*(\d+)px\s+1fr;", html)
-    rows = re.search(r"grid-template-rows:\s*(\d+)px\s+1fr\s+(\d+)px;", html)
+    rows = re.search(r"grid-template-rows:\s*(\d+)px\s+1fr(?:\s+(\d+)px)?;", html)
     assert columns is not None and rows is not None
-    sidebar, header, footer = int(columns.group(1)), int(rows.group(1)), int(rows.group(2))
+    sidebar, header = int(columns[1]), int(rows[1])
+    footer = int(rows[2]) if rows[2] else 0
 
-    found = re.search(r'style="([^"]*)"', _editor_section(html))
-    assert found is not None
-    inset = found[1]
+    rule = re.search(r"\.panel\s*\{[^}]*position:\s*fixed;[^}]*\}", html)
+    assert rule is not None, "the shared .panel rule must dock the panels"
+    inset = rule[0]
     assert f"left: {sidebar}px" in inset, inset
     assert f"top: {header}px" in inset, inset
-    assert f"bottom: {footer}px" in inset, inset
+    assert (f"bottom: {footer}px" if footer else "bottom: 0;") in inset, inset
 
 
 # -- time is derived from an integer frame ---------------------------------

@@ -143,13 +143,56 @@ actions including `compare.frames`; `POST /api/v1/preview/frame` frame 120 of
 image bytes present; `POST /api/v1/compare/frames` frames 0, 120, 450 ->
 `reference_supplied: false`, `diff: null` on every row, verdict `pending: 5`.
 
+
+## 9. Review findings and what changed after them
+
+A review pass (a static read plus live probes against the running server, and
+an independent second pass) found nine issues. All are fixed; the record above
+was written before the fixes and has been corrected where it described the old
+behaviour.
+
+1. **The Compare panel never ran.** `compareStatus` and `compareError` were
+   called but never defined, so every click threw a `ReferenceError` before a
+   request was sent. The helpers are back, and two new browser tests drive
+   `runCompare` and `writeCompareReport` against the real server, which is
+   what the first version of this suite should have done.
+2. **A PASS could be forged.** The report endpoint rendered the verdict sent by
+   the client. It now recomputes the verdict from the checklist rows it was
+   given and ignores the client value.
+3. **An unreadable reference was reported as compared.** A missing video, a
+   missing or empty frame directory, an unprobeable frame rate and a missing
+   ffmpeg all produced `success: true` with `reference_supplied: true` and no
+   reference images. These are errors now, and the payload carries
+   `reference_frames_extracted`, `reference_frames_requested` and
+   `reference_problems` so a partial comparison says so.
+4. **The written record claimed comparisons that did not happen.** It said
+   `Reference: <path> (video)` and listed a reference frame per row even when
+   nothing was extracted. It now states how many of the requested frames were
+   actually read, names the file used for each row, and lists the problems.
+5. **The wrong reference image could be compared.** The old positional fallback
+   mapped frame N to the Nth PNG in the folder, so a folder of `f060`, `f180`
+   and `f400` matched frame 0 to reference frame 60 - with a real diff number.
+   Matching is by frame number now, and position is never guessed.
+6. **The two parsers disagreed.** The backend accepted `+3`, `1_0` and
+   non-ASCII digits; the browser rejected them. The backend is strict now and
+   the parity test covers twenty-one tokens instead of six.
+7. **A malformed report payload returned HTTP 500.** The render happened
+   outside the error handling. It is inside it now, and a non-numeric frame
+   returns `E_VALIDATION`.
+8. **The report could be written anywhere.** `output_path` was unconstrained.
+   The record is now kept inside the project folder, and a path outside it
+   returns `E_PATH_SECURITY`.
+9. **Two smaller ones.** The frame index rounded half to even, so a boundary
+   case could pick the earlier reference frame; it rounds half up now. And the
+   pixel diff looped over two million pixels in Python (1.65 s per HD pair),
+   so it now uses the same metric through Pillow in C.
+
 ## Known gaps, ranked by how much they would mislead you
 
-1. **The panel fetch path has never been end-to-end tested.** The 19 UI tests cover the pure
-   maths, the markup and the DOM construction; the 22 backend tests cover the endpoints; the
-   join between them (`runCompare` reads the fields, calls `/api/v1/compare/frames`, maps
-   the reply into the checklist, then `writeCompareReport` posts the attested rows back) is
-   covered by neither. It was exercised once by hand against the running server in this session,
+1. **The panel fetch path was never end-to-end tested - now it is.** The review
+   found that it could not have been: `runCompare` threw a `ReferenceError` on every
+   click. Two browser tests now drive `runCompare` and `writeCompareReport` against
+   the real server and assert on what the panel painted. It was exercised once by hand against the running server in this session,
    with a direct HTTP call for frames 0, 120 and 450 of the promo project, and it answered
    `reference_supplied: false`, `diff: null`, `pending: 5` - which is the honest answer for a run
    with no reference - but that was a probe script, not a click. **Treat a click-through as the

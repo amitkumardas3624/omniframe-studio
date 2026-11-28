@@ -253,6 +253,17 @@ Limits of the gate itself, so that a pass is not over-read:
 - Frames are mapped by instant, not by index - 10 at 30 fps is 20 at 60 fps - because
   integer indices across different rates compare different moments.
 
+The reference is matched by frame number, never by position: a file named
+`frame_00060.png`, `00060.png` or `f060.png` is reference frame 60. A folder
+whose file names carry no frame number cannot be mapped to frame numbers, so
+such a reference is reported as missing rather than compared against whichever
+file happened to sort first.
+
+A reference that cannot be read is an error, not a quiet downgrade: a missing
+video or a missing frame directory returns `E_VALIDATION`, and a reference
+whose frame rate cannot be probed returns `E_VALIDATION` or
+`E_ENGINE_UNAVAILABLE`. The gate will not fall back to the project frame rate,
+because that compares different moments and still produces a plausible number.
 ## 7. Verdict, and what would change it
 
 `verdict` over these rows returns `ok: false`, `pending: 5`, `gaps: []`,
@@ -304,9 +315,10 @@ POST /api/v1/compare/frames
  "reference_video": "reels/motion-reel.mp4", "backend": "playwright"}
 
 POST /api/v1/compare/report
+(output_path must stay inside the project folder)
 {"project_path": "examples/motion-reel-template",
  "compare": <the result above>,
- "output_path": "docs/motion-reel-compare.md"}
+ "output_path": "examples/motion-reel-template/motion-reel-compare-gate.md"}
 ```
 
 ## 9. Verification ledger

@@ -626,6 +626,9 @@ def register_builtin_actions(registry: ActionRegistry | None = None) -> ActionRe
             "reference_supplied": report.get("reference_supplied"),
             "reference_kind": report.get("reference_kind"),
             "reference_fps": report.get("reference_fps"),
+            "reference_frames_requested": report.get("reference_frames_requested"),
+            "reference_frames_extracted": report.get("reference_frames_extracted"),
+            "reference_problems": report.get("reference_problems"),
             "frames": [
                 {
                     "frame": row.get("frame"),
@@ -636,7 +639,11 @@ def register_builtin_actions(registry: ActionRegistry | None = None) -> ActionRe
                 for row in report.get("frames") or []
             ],
             "checklist": [
-                {"id": item.get("id"), "status": item.get("status")}
+                {
+                    "id": item.get("id"),
+                    "status": item.get("status"),
+                    "note": item.get("note"),
+                }
                 for item in report.get("checklist") or []
             ],
             "verdict": report.get("verdict"),

@@ -15,12 +15,13 @@ missing, so the gate degrades honestly instead of pretending to compare.
 
 from __future__ import annotations
 
+import re
 from collections.abc import Callable, Sequence
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
-from ...core.errors import EngineUnavailable, ValidationError
+from ...core.errors import EngineUnavailable, RenderError, ValidationError
 
 __all__ = [
     "ATTESTED",
@@ -104,17 +105,21 @@ def parse_frames(text: str, total: int) -> list[int]:
         fields = raw.split(",")
         if any(not field.strip() for field in fields):
             raise ValidationError("Frame list has an empty entry.", value=raw)
-        tokens = " ".join(fields).split()
+        # One number per comma field: "1, 2 3" is two numbers and junk,
+        # not three numbers, and the browser parser reads it the same way.
+        tokens = [field.strip() for field in fields]
     else:
         tokens = raw.split()
     frames: list[int] = []
     for token in tokens:
-        try:
-            frame = int(token)
-        except (TypeError, ValueError) as exc:
+        # Plain ASCII digits only. int() also accepts "+3", "1_0" and the
+        # digits of other scripts, and the browser parser does not; the two
+        # have to agree on which frame was asked for.
+        if not token.isascii() or not token.isdigit():
             raise ValidationError(
-                "Frame list entry is not an integer.", value=token
-            ) from exc
+                "Frame list entry is not a plain frame number.", value=token
+            )
+        frame = int(token)
         if frame < 0 or frame >= total:
             raise ValidationError(
                 "Frame is outside the project range.",
@@ -141,7 +146,9 @@ def reference_frame_index(frame: int, *, project_fps: float, reference_fps: floa
             project_fps=project_fps,
             reference_fps=reference_fps,
         )
-    return int(round((int(frame) / project_rate) * reference_rate))
+    # Half up, not banker rounding: at exactly half a reference frame the
+    # later reference frame is the closer one.
+    return int((int(frame) / project_rate) * reference_rate + 0.5)
 
 
 def _parse_rate(raw: Any) -> float | None:
@@ -164,20 +171,33 @@ def _parse_rate(raw: Any) -> float | None:
         return None
 
 
-def reference_fps(video: str | Path) -> float | None:
-    """Best-effort frame rate of a reference video, or None when unreadable."""
+def reference_fps(video: str | Path) -> float:
+    """Frame rate of the reference video.
+
+    Raises when the rate cannot be read. The rate decides which reference
+    instant each output frame is compared against, so an unreadable reference
+    has to stop the run: falling back to the project rate would compare
+    different moments while producing a plausible looking diff.
+    """
 
     from .ffmpeg import ffprobe_info
 
     try:
         info = ffprobe_info(video)
-    except Exception:
-        return None
+    except RenderError as exc:
+        raise ValidationError(
+            "Reference video could not be read.", path=str(video)
+        ) from exc
     for stream in info.get("streams", []) or []:
         if stream.get("codec_type") != "video":
             continue
-        return _parse_rate(stream.get("r_frame_rate"))
-    return None
+        rate = _parse_rate(stream.get("r_frame_rate"))
+        if rate is None:
+            raise ValidationError(
+                "Reference video has no usable frame rate.", path=str(video)
+            )
+        return rate
+    raise ValidationError("Reference file has no video stream.", path=str(video))
 
 
 def extract_reference_frame(video: str | Path, index: int, output_dir: str | Path) -> Path:
@@ -223,7 +243,7 @@ def mean_abs_diff(first: str | Path, second: str | Path) -> float | None:
     """
 
     try:
-        from PIL import Image
+        from PIL import Image, ImageChops, ImageStat
     except ImportError:
         return None
     try:
@@ -232,21 +252,10 @@ def mean_abs_diff(first: str | Path, second: str | Path) -> float | None:
             expected = right.convert("RGBA")
             if actual.size != expected.size:
                 return None
-            width, height = actual.size
-            left_px = actual.load()
-            right_px = expected.load()
-            total = 0
-            for y in range(height):
-                for x in range(width):
-                    one = left_px[x, y]
-                    two = right_px[x, y]
-                    total += (
-                        abs(one[0] - two[0])
-                        + abs(one[1] - two[1])
-                        + abs(one[2] - two[2])
-                        + abs(one[3] - two[3])
-                    )
-            return total / float(width * height * 4)
+            # The same metric as the per-pixel loop, computed in C: the mean
+            # absolute difference of every band, averaged over the bands.
+            means = ImageStat.Stat(ImageChops.difference(actual, expected)).mean
+            return sum(means) / len(means)
     except Exception:
         return None
 
@@ -300,14 +309,26 @@ def build_compare(
     kind = None
     rate = float(project_fps)
     rows: list[dict[str, Any]] = []
+    problems: list[str] = []
     try:
         if reference_video is not None:
             kind = "video"
-            probed = reference_fps(reference_video)
-            if probed:
-                rate = float(probed)
+            # The reference rate decides the instant mapping, so an unreadable
+            # reference stops the run instead of silently reusing the project
+            # rate and comparing the wrong moments.
+            rate = float(reference_fps(reference_video))
         elif reference_frames_dir is not None:
             kind = "frames"
+            directory = Path(reference_frames_dir)
+            if not directory.is_dir():
+                raise ValidationError(
+                    "Reference frames directory not found.", path=str(directory)
+                )
+            if not any(directory.glob("*.png")):
+                raise ValidationError(
+                    "Reference frames directory has no PNG frames.",
+                    path=str(directory),
+                )
 
         for frame in wanted:
             rendered = dict(render_frame(frame))
@@ -319,28 +340,44 @@ def build_compare(
                 "current": current_b64,
                 "reference": None,
                 "reference_frame": None,
+                "reference_file": None,
+                "reference_match": None,
                 "diff": None,
             }
             if kind == "video":
                 index = reference_frame_index(
                     frame, project_fps=float(project_fps), reference_fps=rate
                 )
-                row["reference_frame"] = index
                 try:
                     ref_path = extract_reference_frame(reference_video, index, scratch)
+                except EngineUnavailable:
+                    # No ffmpeg means no comparison is possible; say so.
+                    raise
+                except Exception as exc:
+                    problems.append(
+                        f"Reference frame {index} could not be extracted: {exc}"
+                    )
+                    ref_path = None
+                if ref_path is not None:
+                    row["reference_frame"] = index
+                    row["reference_match"] = "video"
                     row["reference"] = base64.b64encode(
                         Path(ref_path).read_bytes()
                     ).decode("ascii")
-                except ValidationError:
-                    row["reference"] = None
-                except Exception:
-                    row["reference"] = None
             elif kind == "frames":
-                ref_path = _find_reference_png(Path(reference_frames_dir), frame)
-                row["reference_frame"] = frame
+                ref_path, match_kind = _resolve_reference_png(
+                    Path(reference_frames_dir), frame
+                )
+                row["reference_match"] = match_kind
                 if ref_path is not None:
+                    row["reference_frame"] = frame
+                    row["reference_file"] = ref_path.name
                     row["reference"] = base64.b64encode(ref_path.read_bytes()).decode(
                         "ascii"
+                    )
+                else:
+                    problems.append(
+                        f"No reference frame {frame} in {reference_frames_dir}."
                     )
             if row["reference"] and current_b64:
                 current_png = scratch / f"current_{frame:06d}.png"
@@ -362,6 +399,11 @@ def build_compare(
         "reference_kind": kind,
         "reference_path": str(reference_video or reference_frames_dir or "") or None,
         "reference_fps": rate if kind == "video" else None,
+        "reference_frames_requested": len(rows),
+        "reference_frames_extracted": sum(
+            1 for row in rows if row.get("reference")
+        ),
+        "reference_problems": problems,
         "frames": rows,
         "checklist": checklist,
         "verdict": verdict(checklist),
@@ -369,26 +411,41 @@ def build_compare(
 
 
 def _find_reference_png(directory: Path, frame: int) -> Path | None:
-    """Locate the reference PNG for ``frame`` inside ``directory``.
+    """Locate the reference PNG for ``frame`` inside ``directory``."""
 
-    Tries the project frame naming first, then a zero-padded bare name, then
-    plain numbering, and finally positional order in the sorted PNG list so a
-    hand-collected contact sheet still works.
+    path, _match = _resolve_reference_png(directory, frame)
+    return path
+
+
+def _resolve_reference_png(directory: Path, frame: int) -> tuple[Path | None, str]:
+    """Locate the reference PNG for ``frame`` and report how it was matched.
+
+    The exact name conventions come first. Then a file whose name carries the
+    frame number is matched by that number, so ``f060.png`` is reference frame
+    60 and never "the first file in the folder". Positional order is not used
+    at all: guessing an index there would compare a different frame than the
+    one that was asked for and would report it as a real difference.
     """
 
+    number = int(frame)
     for name in (
-        f"frame_{int(frame):05d}.png",
-        f"{int(frame):05d}.png",
-        f"frame_{int(frame)}.png",
-        f"{int(frame)}.png",
+        f"frame_{number:05d}.png",
+        f"{number:05d}.png",
+        f"frame_{number}.png",
+        f"{number}.png",
     ):
         candidate = directory / name
         if candidate.exists():
-            return candidate
-    pngs = sorted(directory.glob("*.png"))
-    if 0 <= int(frame) < len(pngs):
-        return pngs[int(frame)]
-    return None
+            return candidate, "name"
+
+    numbered: dict[int, Path] = {}
+    for png in sorted(directory.glob("*.png")):
+        digits = re.findall(r"\d+", png.stem)
+        if digits:
+            numbered.setdefault(int(digits[-1]), png)
+    if number in numbered:
+        return numbered[number], "frame_number"
+    return None, "no_match"
 
 
 def verdict(rows: Sequence[dict[str, Any]]) -> dict[str, Any]:
@@ -435,10 +492,24 @@ def render_report_markdown(payload: dict[str, Any]) -> str:
     kind = payload.get("reference_kind")
     path = payload.get("reference_path")
     result = payload.get("verdict") or {}
+    rows = list(payload.get("frames") or [])
+    extracted = payload.get("reference_frames_extracted")
+    if extracted is None:
+        extracted = sum(1 for row in rows if row.get("reference"))
+    requested = payload.get("reference_frames_requested")
+    if requested is None:
+        requested = len(rows)
+    problems = [str(item) for item in (payload.get("reference_problems") or [])]
+
     if path:
         reference = f"`{path}` ({kind})"
+        if extracted:
+            reference += f" - {extracted} of {requested} frame(s) compared"
+        else:
+            reference += " - NOT COMPARED, no reference frame could be read"
     else:
         reference = "none supplied - current output only"
+
     lines = [
         "# OmniFrame compare gate",
         "",
@@ -451,28 +522,46 @@ def render_report_markdown(payload: dict[str, Any]) -> str:
         "",
         "## Frames looked at",
         "",
-        "| frame | reference frame | diff |",
-        "|---|---|---|",
+        "| frame | reference frame | reference file | diff |",
+        "|---|---|---|---|",
     ]
-    for row in payload.get("frames") or []:
-        diff = row.get("diff")
-        diff_text = "n/a" if diff is None else format(float(diff), "g")
+    for row in rows:
+        diff_text = "n/a"
+        if row.get("diff") is not None:
+            try:
+                diff_text = format(float(row["diff"]), "g")
+            except (TypeError, ValueError):
+                diff_text = "n/a"
         ref = row.get("reference_frame")
-        ref_text = "-" if ref is None else str(ref)
+        ref_text = "n/a" if ref is None else str(ref)
+        name = row.get("reference_file")
+        name_text = "-" if not name else str(name)
+        try:
+            frame_number = int(row.get("frame") or 0)
+        except (TypeError, ValueError):
+            frame_number = "?"
         lines.append(
-            f"| frame {int(row.get('frame') or 0)} | {ref_text} | {diff_text} |"
+            f"| frame {frame_number} | {ref_text} | {name_text} | {diff_text} |"
         )
+    if problems:
+        lines += ["", "## Reference problems", ""]
+        for problem in problems:
+            lines.append(f"- {problem}")
     lines += ["", "## Checklist", "", "| mechanic | status | note |", "|---|---|---|"]
     for row in payload.get("checklist") or []:
+        mechanic = row.get("id")
+        status = row.get("status")
         note = row.get("note") or ""
-        lines.append(f"| {row.get('id')} | {row.get('status')} | {note} |")
+        lines.append(f"| {mechanic} | {status} | {note} |")
     limits = [
         row for row in (payload.get("checklist") or []) if row.get("status") == "limit"
     ]
     lines += ["", "## Engine limits (not expressible)", ""]
     if limits:
         for row in limits:
-            lines.append(f"- {row.get('id')}: {row.get('note') or 'no note recorded'}")
+            label = row.get("id")
+            detail = row.get("note") or "no note recorded"
+            lines.append(f"- {label}: {detail}")
     else:
         lines.append("- None recorded.")
     lines += ["", "## Verdict", ""]
@@ -483,4 +572,7 @@ def render_report_markdown(payload: dict[str, Any]) -> str:
     if result.get("gaps"):
         lines.append("")
         lines.append("Gaps: " + ", ".join(result["gaps"]))
+    if result.get("limits_without_note"):
+        lines.append("")
+        lines.append("Limits without a note: " + ", ".join(result["limits_without_note"]))
     return "\n".join(lines)
