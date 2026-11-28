@@ -1,0 +1,38 @@
+<html data-composition-variables='{"green":"#00BD6D","ink":"#004A44","pink":"#F6C8D6","paper":"#FFFFFF","logo":"W","logoName":"London Northwestern","logoName2":"Railway","tagline":"The straight-talking train company"}'>
+<head>
+<style>
+    html, body { margin: 0; padding: 0; width: 1280px; height: 720px; overflow: hidden; }
+    body { background: #00BD6D; color: #004A44; font-family: "Arial Black", "Archivo Black", Impact, sans-serif; }
+    #stage { position: relative; width: 1280px; height: 720px; overflow: hidden; }
+    #word { position: absolute; left: 0; top: 50%; width: 1280px; text-align: center; font-weight: 900; line-height: 0.9; letter-spacing: -0.01em; opacity: 0; }
+    #word.left { text-align: left; padding-left: 70px; }
+    #word.dotted {
+        color: transparent;
+        background-image: radial-gradient(circle, #004A44 1.6px, transparent 1.8px);
+        background-size: 7px 7px;
+        -webkit-background-clip: text;
+        background-clip: text;
+    }
+    #underline { position: absolute; height: 9px; background: #FFFFFF; opacity: 0; }
+    #brush { position: absolute; opacity: 0; }
+    #splat { position: absolute; inset: 0; opacity: 0; }
+    #logo { position: absolute; left: 0; top: 250px; width: 1280px; text-align: center; opacity: 0; }
+    #logoMark { font-size: 150px; color: #FFFFFF; font-style: italic; }
+    #logoName { font-size: 40px; color: #FFFFFF; font-weight: 800; line-height: 1.05; }
+    #tagline { position: absolute; left: 0; top: 640px; width: 1280px; text-align: center; font-size: 22px; color: #004A44; opacity: 0; }
+</style>
+</head>
+<body>
+<div id="stage">
+    <div id="word"></div>
+    <div id="underline"></div>
+    <svg id="brush" viewBox="0 0 1280 720" width="1280" height="720"></svg>
+    <svg id="splat" viewBox="0 0 1280 720" width="1280" height="720"></svg>
+    <div id="logo">
+        <div id="logoMark">W</div>
+        <div id="logoName">London Northwestern<br>Railway</div>
+    </div>
+    <div id="tagline">The straight-talking train company</div>
+</div>
+</body>
+</html>
