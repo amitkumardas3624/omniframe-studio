@@ -400,3 +400,44 @@ the comparison produces a record carrying exact frame numbers.
   numbers, and the result - including what could not be attested without the
   reference reel, and the engine limits - is recorded in docs/compare-gate.md
 - tests/test_ui_a11y.py and all prior suites stay green
+
+## Phase 6 - Remotion-like studio UI (append)
+
+### Frontend
+
+- The editor panel now reads like a Remotion studio: a canvas in the middle, a
+  transport under it, a tabbed inspector on the right, and the timeline along
+  the bottom. The three grid regions (`preview-left`, `timeline-bottom`,
+  `inspector-right`) and their names are unchanged, so the layout contract and
+  its tests still hold.
+- The transport carries: jump to first, step one frame back, play/pause, step one
+  frame forward, jump to last, a frame field with a Go button, a timecode, the
+  in/out readout, a zoom mode (Fit, 50, 100, 200 percent), a playback rate
+  (0.25x to 2x) and a loop toggle. Keyboard: Space plays, the arrow keys step a
+  frame, G focuses the frame field. Playback advances the integer frame as fast
+  as the frames render - there is no client-side player, because every frame
+  is an HTTP render of the project.
+- The inspector is tabbed: **Props** (the selected clip `code.params` as
+  name/value rows, with the raw JSON still available underneath), **Variables**
+  (project level key/value rows), and **Project** (validation and assets). The
+  project path, Load and Save moved to a toolbar above the regions so they are
+  always reachable, the way Remotion keeps the composition picker visible.
+- Project variables are real: they live in `metadata.variables` on the project
+  document and are injected into every rendered frame as
+  `window.__OMNIFRAME_VARIABLES__`, so a scene can read them without knowing
+  anything about the editor.
+
+### Backend
+
+- No new endpoint. The existing ones serve the new workflow unchanged:
+  `projects/get` and `projects/save` carry the variables, `preview/frame` renders
+  the frame the transport asks for, `inspector/validate` backs the Project tab,
+  and `compare/frames` and `compare/report` are unchanged.
+- `preview/frame` now injects the variables global next to the frame globals.
+
+### Exit criteria
+
+- The player, the tabs and the variables round trip are covered by
+  `tests/test_ui_studio.py` in a real browser.
+- `tests/test_ui_editor.py`, `tests/test_ui_editor_layout.py`,
+  `tests/test_ui_a11y.py` and every other suite stay green.

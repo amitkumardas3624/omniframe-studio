@@ -355,6 +355,174 @@
       opacity: 1;
     }
 
+    /* -- Studio: player, properties panel and variables, in the Remotion mould
+       but built from the palette above. The player sits under the canvas,
+       the properties panel on the right, the timeline along the bottom. */
+    .editor-region-preview {
+      display: flex;
+      flex-direction: column;
+      min-height: 0;
+      overflow: hidden;
+    }
+
+    .studio-canvas {
+      position: relative;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex: 1 1 0;
+      min-height: 120px;
+      overflow: hidden;
+      padding: 10px;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      background:
+        repeating-conic-gradient(rgba(255, 255, 255, 0.03) 0% 25%, transparent 0% 50%)
+          50% / 22px 22px,
+        var(--bg);
+    }
+
+    .studio-canvas img.editor-stage {
+      max-width: 100%;
+      max-height: 100%;
+      object-fit: contain;
+      background: #000;
+      border-radius: 4px;
+      box-shadow: 0 10px 34px rgba(0, 0, 0, 0.5);
+    }
+
+    .studio-player {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      flex-wrap: wrap;
+      margin-top: 8px;
+      padding: 6px 8px;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      background: var(--bg-subtle);
+    }
+
+    .studio-btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      min-width: 28px;
+      height: 28px;
+      padding: 0 7px;
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      background: var(--card);
+      color: var(--fg);
+      font-size: 12px;
+      line-height: 1;
+      cursor: pointer;
+    }
+
+    .studio-btn:hover {
+      border-color: var(--accent);
+      color: var(--accent);
+    }
+
+    .studio-btn:focus-visible {
+      outline: 2px solid var(--accent);
+      outline-offset: 1px;
+    }
+
+    .studio-btn[aria-pressed="true"] {
+      background: var(--accent-dim);
+      border-color: var(--accent);
+      color: var(--accent);
+    }
+
+    .studio-readout {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      font-family: ui-monospace, "SFMono-Regular", Menlo, monospace;
+      font-size: 12px;
+      color: var(--fg);
+    }
+
+    .studio-readout input {
+      width: 68px;
+    }
+
+    .studio-spacer {
+      flex: 1 1 auto;
+    }
+
+    .studio-tabs {
+      display: flex;
+      gap: 2px;
+      margin-bottom: 10px;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .studio-tab {
+      appearance: none;
+      border: 0;
+      border-bottom: 2px solid transparent;
+      background: transparent;
+      color: var(--muted);
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      padding: 8px 10px;
+      cursor: pointer;
+    }
+
+    .studio-tab[aria-selected="true"] {
+      color: var(--accent);
+      border-bottom-color: var(--accent);
+    }
+
+    .studio-tab:focus-visible {
+      outline: 2px solid var(--accent);
+      outline-offset: -2px;
+    }
+
+    .studio-pane {
+      min-height: 0;
+    }
+
+    .studio-props {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+
+    .studio-prop-row {
+      display: grid;
+      grid-template-columns: 1fr 1.3fr 28px;
+      gap: 6px;
+      align-items: center;
+    }
+
+    .studio-prop-row input {
+      width: 100%;
+      padding: 4px 6px;
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      background: var(--bg-subtle);
+      color: var(--fg);
+      font-size: 12px;
+    }
+
+    .studio-prop-row input:focus-visible {
+      outline: 2px solid var(--accent);
+      outline-offset: -1px;
+    }
+
+    .studio-prop-name {
+      font-family: ui-monospace, "SFMono-Regular", Menlo, monospace;
+    }
+
+    .studio-empty-note {
+      color: var(--muted);
+      font-size: 12px;
+    }
     /* Compare gate: reference frame beside the rendered frame. */
     .compare-pair {
       margin: 0 0 12px;
@@ -1362,23 +1530,63 @@
         <h2 class="panel-title" id="editor-panel-title">Editor</h2>
         <button class="panel-close" type="button" aria-label="Close panel">&times;</button>
       </div>
+      <div class="editor-toolbar">
+        <label class="text-sm text-muted" for="editor-project-path">Project</label>
+        <input type="text" id="editor-project-path" placeholder="/path/to/project.json" class="editor-toolbar-path">
+        <button class="tool-run" id="editor-load-btn" type="button" onclick="loadEditorProject()">Load</button>
+        <button class="tool-run" id="editor-save-btn" type="button" onclick="saveEditorProject()">Save</button>
+        <span class="studio-readout" id="editor-frame-meta" aria-live="polite">No project loaded</span>
+      </div>
       <div id="editor-content">
         <div class="editor-region editor-region-preview" data-region="preview-left" style="grid-area: preview-left;">
-          <div class="editor-preview-wrap" id="editor-preview-wrap">
+          <div class="studio-canvas" id="editor-canvas">
             <img id="editor-preview" class="editor-stage" alt="Preview of the frame at the scrubbed timeline position">
           </div>
-          <div>
-            <div class="text-sm text-muted" id="editor-time-meta" aria-live="polite">t = 0.000 s</div>
-            <div class="text-sm text-muted" id="editor-verify-meta" aria-live="polite">No frame rendered yet</div>
+          <div class="studio-player" role="group" aria-label="Preview player">
+            <button class="studio-btn" id="editor-jump-start" type="button" onclick="editorJumpTo(0)" title="Jump to the first frame" aria-label="Jump to the first frame">&#9198;</button>
+            <button class="studio-btn" id="editor-prev-frame" type="button" onclick="editorStepFrame(-1)" title="Previous frame" aria-label="Previous frame">&#9664;&#9664;</button>
+            <button class="studio-btn" id="editor-play-btn" type="button" onclick="editorTogglePlay()" title="Play or pause" aria-label="Play" aria-pressed="false">&#9654;</button>
+            <button class="studio-btn" id="editor-next-frame" type="button" onclick="editorStepFrame(1)" title="Next frame" aria-label="Next frame">&#9654;&#9654;</button>
+            <button class="studio-btn" id="editor-jump-end" type="button" onclick="editorJumpTo(-1)" title="Jump to the last frame" aria-label="Jump to the last frame">&#9197;</button>
+            <label class="studio-readout" for="editor-frame">Frame
+              <input id="editor-frame" type="number" min="0" value="0" onchange="editorJumpTo(parseInt(this.value, 10) || 0)">
+              <span id="editor-frame-total">/ 0</span>
+            </label>
+            <button class="studio-btn" id="editor-scrub-btn" type="button" onclick="editorJumpTo(parseInt(document.getElementById('editor-frame').value, 10) || 0)" title="Go to this frame" aria-label="Go to this frame">Go</button>
+            <span class="studio-readout" id="editor-timecode">00:00.00</span>
+            <span class="studio-spacer"></span>
+            <span class="studio-readout" id="editor-inout-readout">In 0 &#183; Out 0</span>
+            <label class="studio-readout" for="editor-zoom-mode">Zoom
+              <select id="editor-zoom-mode" onchange="editorSetZoomMode(this.value)">
+                <option value="fit">Fit</option>
+                <option value="0.5">50%</option>
+                <option value="1">100%</option>
+                <option value="2">200%</option>
+              </select>
+            </label>
+            <label class="studio-readout" for="editor-rate">Speed
+              <select id="editor-rate" onchange="editorSetRate(this.value)">
+                <option value="0.25">0.25x</option>
+                <option value="0.5">0.5x</option>
+                <option value="1" selected>1x</option>
+                <option value="2">2x</option>
+              </select>
+            </label>
+            <button class="studio-btn" id="editor-loop" type="button" onclick="editorToggleLoop()" aria-pressed="false" title="Loop playback" aria-label="Loop playback">Loop</button>
           </div>
+          <div class="text-sm text-muted" id="editor-time-meta" aria-live="polite">t = 0.000 s</div>
+          <div class="text-sm text-muted" id="editor-verify-meta" aria-live="polite">No frame rendered yet</div>
         </div>
         <div class="editor-region editor-region-timeline" data-region="timeline-bottom" style="grid-area: timeline-bottom;">
           <div class="editor-transport">
+            <button class="studio-btn" id="editor-in-btn" type="button" onclick="editorSetIn()" title="Set the in point at this frame" aria-label="Set the in point">In</button>
+            <button class="studio-btn" id="editor-out-btn" type="button" onclick="editorSetOut()" title="Set the out point at this frame" aria-label="Set the out point">Out</button>
             <label class="text-sm text-muted" for="editor-scrub">Timeline scrub</label>
             <input type="range" id="editor-scrub" min="0" max="0" value="0" oninput="onEditorScrub(this.value)">
             <button class="tool-run" type="button" onclick="editorAddTrack()">Track</button>
             <label class="text-sm text-muted" for="editor-zoom">Zoom</label>
             <input type="range" id="editor-zoom" min="2" max="24" value="6" step="1" oninput="onEditorZoom(this.value)">
+            <span class="studio-readout" id="editor-zoom-readout">6 px/frame</span>
           </div>
           <div class="editor-timeline-scroll">
             <div class="editor-timeline-inner" id="editor-timeline-inner">
@@ -1389,19 +1597,13 @@
           </div>
         </div>
         <div class="editor-region editor-region-inspector" id="editor-inspector" data-region="inspector-right" style="grid-area: inspector-right;">
-          <label class="text-sm text-muted block mb-1" for="editor-project-path">Project file path</label>
-          <input type="text" id="editor-project-path" placeholder="/path/to/project.json" class="block w-full rounded border px-2 py-1 text-sm">
-          <button class="tool-run mt-2" id="editor-load-btn" type="button" onclick="loadEditorProject()">Load project</button>
-          <div class="mt-4">
-            <label class="text-sm text-muted block mb-1" for="editor-frame">Frame</label>
-            <input type="number" id="editor-frame" min="0" value="0" class="block w-full rounded border px-2 py-1 text-sm">
-            <button class="tool-run mt-2" id="editor-scrub-btn" type="button" onclick="seekEditorFrame(parseInt(document.getElementById('editor-frame').value, 10) || 0)">Seek to frame</button>
-            <div class="mt-1 text-sm text-muted" id="editor-frame-meta" aria-live="polite">No project loaded</div>
+          <div class="studio-tabs" role="tablist" aria-label="Inspector">
+            <button class="studio-tab" id="editor-tab-props" type="button" role="tab" aria-selected="true" aria-controls="editor-pane-props" onclick="editorSelectTab('props')">Props</button>
+            <button class="studio-tab" id="editor-tab-variables" type="button" role="tab" aria-selected="false" aria-controls="editor-pane-variables" onclick="editorSelectTab('variables')">Variables</button>
+            <button class="studio-tab" id="editor-tab-project" type="button" role="tab" aria-selected="false" aria-controls="editor-pane-project" onclick="editorSelectTab('project')">Project</button>
           </div>
-          <div class="mt-4">
-            <button class="tool-run" id="editor-save-btn" type="button" onclick="saveEditorProject()">Save project</button>
-          </div>
-          <div class="mt-4" id="editor-inspector-clip">
+
+          <section class="studio-pane" id="editor-pane-props" role="tabpanel" aria-labelledby="editor-tab-props">
             <div class="text-sm font-semibold mb-1">Selected clip</div>
             <div class="text-sm text-muted mb-2" id="editor-inspector-clip-meta">Click a clip on the timeline to inspect it.</div>
             <div id="editor-inspector-timing">
@@ -1416,22 +1618,47 @@
               <button class="tool-run mt-1" type="button" onclick="editorApplyInspectorTiming()">Apply timing</button>
             </div>
             <div id="editor-inspector-params" class="mt-3">
-              <label class="text-sm text-muted block" for="editor-clip-params">code.params (content.json)</label>
-              <textarea id="editor-clip-params" rows="6" spellcheck="false" class="block w-full rounded border px-2 py-1 text-sm"></textarea>
+              <div class="text-sm font-semibold mb-1">Props</div>
+              <div class="studio-props" id="editor-props-rows"></div>
+              <div class="mt-1">
+                <button class="tool-run" type="button" id="editor-props-add" onclick="editorAddPropRow()">Add prop</button>
+                <button class="tool-run mt-2" type="button" id="editor-props-apply" onclick="editorApplyPropRows()">Apply props</button>
+              </div>
               <div class="text-xs text-muted mt-1" id="editor-inspector-params-hint">Composition keys (data-composition-variables): none</div>
-              <button class="tool-run mt-1" type="button" onclick="editorApplyInspectorParams()">Apply params</button>
+              <details class="mt-2">
+                <summary class="text-xs text-muted">Raw props JSON</summary>
+                <label class="text-sm text-muted block mb-1" for="editor-clip-params">code.params</label>
+                <textarea id="editor-clip-params" rows="6" spellcheck="false" class="block w-full rounded border px-2 py-1 text-sm"></textarea>
+                <button class="tool-run mt-1" type="button" onclick="editorApplyInspectorParams()">Apply params</button>
+              </details>
             </div>
-          </div>
-          <div class="mt-4">
-            <div class="text-sm font-semibold mb-1">Validation</div>
-            <pre id="editor-inspector-issues" class="text-xs text-muted" role="status" aria-live="polite">No issues.</pre>
-          </div>
-          <div class="mt-4">
-            <div class="text-sm font-semibold mb-1">Assets</div>
-            <ul id="editor-inspector-assets" class="text-sm text-muted list-none m-0 p-0">
-              <li>No assets. Add them to project.assets in the project file.</li>
-            </ul>
-          </div>
+          </section>
+
+          <section class="studio-pane" id="editor-pane-variables" role="tabpanel" aria-labelledby="editor-tab-variables" hidden>
+            <div class="text-sm font-semibold mb-1">Project variables</div>
+            <div class="text-xs text-muted mb-2">Values every scene can read as window.__OMNIFRAME_VARIABLES__.</div>
+            <div class="studio-props" id="editor-variable-rows"></div>
+            <div class="mt-1">
+              <button class="tool-run" type="button" id="editor-variables-add" onclick="editorAddVariableRow()">Add variable</button>
+              <button class="tool-run mt-2" type="button" id="editor-variables-apply" onclick="editorApplyVariables()">Apply variables</button>
+            </div>
+          </section>
+
+          <section class="studio-pane" id="editor-pane-project" role="tabpanel" aria-labelledby="editor-tab-project" hidden>
+            <div class="text-sm font-semibold mb-1">Project</div>
+            <div class="text-xs text-muted mb-2">The file, its validation and its assets.</div>
+            <div class="mt-4">
+              <div class="text-sm font-semibold mb-1">Validation</div>
+              <pre id="editor-inspector-issues" class="text-xs text-muted" role="status" aria-live="polite">No issues.</pre>
+            </div>
+            <div class="mt-4">
+              <div class="text-sm font-semibold mb-1">Assets</div>
+              <ul id="editor-inspector-assets" class="text-sm text-muted list-none m-0 p-0">
+                <li>No assets. Add them to project.assets in the project file.</li>
+              </ul>
+            </div>
+          </section>
+
           <div class="mt-4 text-sm text-muted" id="editor-status" role="status" aria-live="polite">Ready</div>
         </div>
       </div>
@@ -1661,6 +1888,7 @@
       const timeMeta = document.getElementById('editor-time-meta');
       if (timeMeta) timeMeta.textContent = 't = ' + editorTimeFromFrame(frame).toFixed(3) + ' s';
       updateEditorPlayhead();
+      editorPlayerReadout();
     }
 
     function renderEditorRuler() {
@@ -2418,6 +2646,317 @@
       });
     }
 
+    // -- Studio player -------------------------------------------------
+    // Remotion-like transport over our own frame-addressed renderer: the
+    // integer frame is the source of truth, and playback advances it one
+    // frame at a time as fast as the frames render.
+    var editorPlaying = false;
+    var editorPlayTimer = null;
+    var editorRate = 1;
+    var editorZoomMode = "fit";
+    var editorLoop = false;
+    var editorInFrame = 0;
+    var editorOutFrame = 0;
+    var editorFrameSize = { width: 0, height: 0 };
+
+    function editorTimecode(frame) {
+      const fps = editorFps() || 1;
+      const seconds = Math.max(0, Number(frame) || 0) / fps;
+      const minutes = Math.floor(seconds / 60);
+      const rest = seconds - minutes * 60;
+      const pad = function (value, width) {
+        let text = String(value);
+        while (text.length < width) text = "0" + text;
+        return text;
+      };
+      return pad(minutes, 2) + ":" + pad(rest.toFixed(2), 5);
+    }
+
+    function editorPlayerReadout() {
+      const total = editorRange();
+      const frame = editorFrame;
+      const totalEl = document.getElementById("editor-frame-total");
+      if (totalEl) totalEl.textContent = "/ " + total;
+      const timecode = document.getElementById("editor-timecode");
+      if (timecode) timecode.textContent = editorTimecode(frame);
+      const inout = document.getElementById("editor-inout-readout");
+      if (inout) {
+        inout.textContent = "In " + editorInFrame + "\u00b7 Out " + editorOutFrame;
+      }
+      const zoomReadout = document.getElementById("editor-zoom-readout");
+      if (zoomReadout) zoomReadout.textContent = editorZoom + " px/frame";
+    }
+
+    function editorJumpTo(frame) {
+      const wanted = Number(frame) < 0 ? editorRange() : Number(frame);
+      seekEditorFrame(wanted);
+    }
+
+    function editorStepFrame(delta) {
+      seekEditorFrame(editorFrame + delta);
+    }
+
+    function editorSetIn() {
+      editorInFrame = Math.min(editorFrame, editorRange());
+      editorPlayerReadout();
+      editorStatus("In point at frame " + editorInFrame + ".");
+    }
+
+    function editorSetOut() {
+      editorOutFrame = Math.max(editorFrame, editorInFrame);
+      editorPlayerReadout();
+      editorStatus("Out point at frame " + editorOutFrame + ".");
+    }
+
+    function editorToggleLoop() {
+      editorLoop = !editorLoop;
+      const btn = document.getElementById("editor-loop");
+      if (btn) btn.setAttribute("aria-pressed", editorLoop ? "true" : "false");
+      editorStatus(editorLoop ? "Loop on." : "Loop off.");
+    }
+
+    function editorSetRate(value) {
+      const rate = Number(value);
+      editorRate = rate > 0 ? rate : 1;
+    }
+
+    function editorSetZoomMode(value) {
+      editorZoomMode = String(value || "fit");
+      editorApplyPreviewZoom();
+    }
+
+    function editorApplyPreviewZoom() {
+      const image = document.getElementById("editor-preview");
+      if (!image) return;
+      if (editorZoomMode === "fit" || !editorFrameSize.width) {
+        image.style.width = "";
+        return;
+      }
+      image.style.width = Math.round(editorFrameSize.width * Number(editorZoomMode)) + "px";
+    }
+
+    async function editorStartPlay() {
+      if (editorPlaying) return;
+      editorPlaying = true;
+      const button = document.getElementById("editor-play-btn");
+      if (button) {
+        button.setAttribute("aria-pressed", "true");
+        button.setAttribute("aria-label", "Pause");
+        button.textContent = "\u23f8";
+      }
+      editorStatus("Playing from frame " + editorFrame + ".");
+      const tick = async function () {
+        if (!editorPlaying) return;
+        let next = editorFrame + 1;
+        if (next > editorRange()) {
+          if (editorLoop && editorOutFrame > editorInFrame) {
+            next = editorInFrame;
+          } else {
+            editorStopPlay();
+            editorStatus("Reached the end of the project.");
+            return;
+          }
+        }
+        const started = Date.now();
+        await seekEditorFrame(next);
+        if (!editorPlaying) return;
+        const budget = 1000 / (editorRate * (editorFps() || 30));
+        editorPlayTimer = setTimeout(tick, Math.max(0, budget - (Date.now() - started)));
+      };
+      editorPlayTimer = setTimeout(tick, 0);
+    }
+
+    function editorStopPlay() {
+      editorPlaying = false;
+      if (editorPlayTimer) {
+        clearTimeout(editorPlayTimer);
+        editorPlayTimer = null;
+      }
+      const button = document.getElementById("editor-play-btn");
+      if (button) {
+        button.setAttribute("aria-pressed", "false");
+        button.setAttribute("aria-label", "Play");
+        button.textContent = "\u25b6";
+      }
+    }
+
+    function editorTogglePlay() {
+      if (editorPlaying) {
+        editorStopPlay();
+        editorStatus("Paused at frame " + editorFrame + ".");
+      } else {
+        editorStartPlay();
+      }
+    }
+
+    function editorHandleKey(event) {
+      const panel = document.getElementById("editor-panel");
+      if (!panel || panel.style.display === "none" || !panel.offsetParent) return;
+      const target = event.target;
+      const tag = target && target.tagName ? target.tagName.toLowerCase() : "";
+      if (tag === "input" || tag === "textarea" || tag === "select") return;
+      if (event.key === " ") {
+        event.preventDefault();
+        editorTogglePlay();
+      } else if (event.key === "ArrowLeft") {
+        event.preventDefault();
+        editorStepFrame(-1);
+      } else if (event.key === "ArrowRight") {
+        event.preventDefault();
+        editorStepFrame(1);
+      } else if (event.key === "g" || event.key === "G") {
+        event.preventDefault();
+        const field = document.getElementById("editor-frame");
+        if (field) field.focus();
+      }
+    }
+
+    // -- Studio properties and variables --------------------------------
+    function editorSelectTab(name) {
+      const tabs = ["props", "variables", "project"];
+      for (const key of tabs) {
+        const tab = document.getElementById("editor-tab-" + key);
+        const pane = document.getElementById("editor-pane-" + key);
+        const on = key === name;
+        if (tab) tab.setAttribute("aria-selected", on ? "true" : "false");
+        if (pane) pane.hidden = !on;
+      }
+      if (name === "props") editorRenderPropRows();
+      if (name === "variables") editorRenderVariableRows();
+    }
+
+    function editorCoerceValue(raw) {
+      const text = String(raw === undefined || raw === null ? "" : raw);
+      if (text === "true") return true;
+      if (text === "false") return false;
+      if (text === "null") return null;
+      if (/^-?(0|[1-9][0-9]*)(\.[0-9]+)?$/.test(text)) return Number(text);
+      return text;
+    }
+
+    function editorRowNode(key, value, label) {
+      const row = document.createElement("div");
+      row.className = "studio-prop-row";
+      const name = document.createElement("input");
+      name.type = "text";
+      name.className = "studio-prop-name";
+      name.value = key === undefined || key === null ? "" : String(key);
+      name.setAttribute("aria-label", label + " name");
+      const field = document.createElement("input");
+      field.type = "text";
+      field.value = value === undefined || value === null ? "" : String(value);
+      field.setAttribute("aria-label", label + " value");
+      const remove = document.createElement("button");
+      remove.type = "button";
+      remove.className = "studio-btn";
+      remove.textContent = "\u00d7";
+      remove.setAttribute("aria-label", "Remove " + label + " " + name.value);
+      remove.addEventListener("click", function () { row.remove(); });
+      row.appendChild(name);
+      row.appendChild(field);
+      row.appendChild(remove);
+      return row;
+    }
+
+    function editorRenderRows(hostId, entries, label, emptyText) {
+      const host = document.getElementById(hostId);
+      if (!host) return;
+      host.textContent = "";
+      if (!entries.length) {
+        const note = document.createElement("div");
+        note.className = "studio-empty-note";
+        note.textContent = emptyText;
+        host.appendChild(note);
+        return;
+      }
+      for (const entry of entries) {
+        host.appendChild(editorRowNode(entry.key, entry.value, label));
+      }
+    }
+
+    function editorPropEntries() {
+      const clip = editorSelectedClip();
+      if (!clip) return [];
+      const params = (clip.code && clip.code.params) || {};
+      return Object.keys(params).map(function (key) {
+        return { key: key, value: params[key] };
+      });
+    }
+
+    function editorVariableEntries() {
+      const project = editorProject;
+      if (!project) return [];
+      const variables = (project.metadata && project.metadata.variables) || {};
+      return Object.keys(variables).map(function (key) {
+        return { key: key, value: variables[key] };
+      });
+    }
+
+    function editorRenderPropRows() {
+      editorRenderRows("editor-props-rows", editorPropEntries(), "Prop",
+        "This clip has no props yet.");
+    }
+
+    function editorRenderVariableRows() {
+      editorRenderRows("editor-variable-rows", editorVariableEntries(), "Variable",
+        "No project variables yet.");
+    }
+
+    function editorAddPropRow() {
+      const host = document.getElementById("editor-props-rows");
+      if (!host) return;
+      const note = host.querySelector(".studio-empty-note");
+      if (note) note.remove();
+      host.appendChild(editorRowNode("newProp", "", "Prop"));
+    }
+
+    function editorAddVariableRow() {
+      const host = document.getElementById("editor-variable-rows");
+      if (!host) return;
+      const note = host.querySelector(".studio-empty-note");
+      if (note) note.remove();
+      host.appendChild(editorRowNode("newVariable", "", "Variable"));
+    }
+
+    function editorRowsToObject(hostId) {
+      const host = document.getElementById(hostId);
+      const rows = host ? host.querySelectorAll(".studio-prop-row") : [];
+      const result = {};
+      for (const row of rows) {
+        const inputs = row.querySelectorAll("input");
+        if (inputs.length < 2) continue;
+        const key = String(inputs[0].value || "").trim();
+        if (!key) continue;
+        result[key] = editorCoerceValue(inputs[1].value);
+      }
+      return result;
+    }
+
+    function editorApplyPropRows() {
+      const clip = editorSelectedClip();
+      if (!clip) {
+        editorStatus("Select a clip before applying props.");
+        return;
+      }
+      const params = editorRowsToObject("editor-props-rows");
+      clip.code = clip.code || {};
+      clip.code.params = params;
+      const area = document.getElementById("editor-clip-params");
+      if (area) area.value = JSON.stringify(params, null, 2);
+      editorStatus("Applied " + Object.keys(params).length + " prop(s) to " + clip.id + ".");
+    }
+
+    function editorApplyVariables() {
+      if (!editorProject) {
+        editorStatus("Load a project before applying variables.");
+        return;
+      }
+      const variables = editorRowsToObject("editor-variable-rows");
+      editorProject.metadata = editorProject.metadata || {};
+      editorProject.metadata.variables = variables;
+      editorStatus("Applied " + Object.keys(variables).length + " project variable(s). Save to keep them.");
+    }
+
     function onEditorZoom(value) {
       const zoom = Math.floor(Number(value));
       if (!Number.isFinite(zoom) || zoom < 2 || zoom > 24) return;
@@ -2431,6 +2970,10 @@
       const image = document.getElementById('editor-preview');
       if (image && result.image_base64) {
         image.src = 'data:image/png;base64,' + result.image_base64;
+      }
+      if (result.width && result.height) {
+        editorFrameSize = { width: Number(result.width), height: Number(result.height) };
+        editorApplyPreviewZoom();
       }
       const verify = document.getElementById('editor-verify-meta');
       if (verify) {
@@ -2577,6 +3120,10 @@
         renderEditorRuler();
         renderEditorTimeline();
         renderEditorInspector();
+        editorRenderPropRows();
+        editorRenderVariableRows();
+        editorOutFrame = editorRange();
+        editorPlayerReadout();
         editorStatus('Project loaded. Rendering frame 0...');
         await seekEditorFrame(0);
       } catch (error) {
@@ -2674,6 +3221,7 @@
     // Initialize all live UI surfaces after the DOM is ready.
     document.addEventListener('DOMContentLoaded', () => {
       bindNavigation();
+      document.addEventListener('keydown', editorHandleKey);
       startConnectionMonitor();
       loadTools();
       loadActions();

@@ -218,9 +218,13 @@ def _render_preview_frame(
     scene.duration_frames = 1
     # The engine evaluates frame 0 of this one-frame scene. Overriding the
     # injected globals makes the scene's own pure seek(t) draw at `frame`.
+    # Project variables travel with the frame so a scene can read them
+    # without knowing anything about the editor.
+    variables = (project.metadata or {}).get("variables") or {}
     scene.javascript = (
         f"window.__OMNIFRAME_FRAME__ = {frame};\n"
         f"window.__OMNIFRAME_TOTAL_FRAMES__ = {total};\n"
+        f"window.__OMNIFRAME_VARIABLES__ = {json.dumps(variables)};\n"
         + (scene.javascript or "")
     )
 

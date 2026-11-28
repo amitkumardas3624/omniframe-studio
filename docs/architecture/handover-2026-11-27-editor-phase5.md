@@ -288,3 +288,35 @@ not one - `CHECKLIST` in `compare.py`, `COMPARE_MECHANICS` in the page, and `MEC
 `tests/test_ui_compare_math.py`. The parity tests compare the first two; the third is a copy that
 the same test could import instead. Adding a sixth mechanic means three edits today, and a test
 that derives its list from the backend would make it one.
+
+## 10. Phase 6 - the studio UI, rebuilt in the Remotion mould
+
+The editor panel used to be a set of stacked forms: a preview, a scrub range, an
+inspector with a JSON textarea. It now reads like a Remotion studio, using the
+same vocabulary and the same workflow, but built on our own frame-addressed
+renderer rather than a React tree:
+
+- **Canvas and transport.** The frame renders on a canvas in the middle, with a
+  transport under it: jump to first, step back, play/pause, step forward, jump
+  to last, a frame field, a timecode, the in/out readout, zoom (Fit, 50, 100,
+  200 percent), playback rate (0.25x to 2x) and loop. Space plays, the arrow
+  keys step a frame, G focuses the frame field.
+- **Why playback is not instant.** Remotion plays a React tree locally. We render
+  one HTTP frame at a time, so play advances the integer frame as fast as the
+  server can render it. The rate control is an upper bound, not a promise.
+- **Inspector tabs.** Props (the selected clip `code.params` as name/value rows,
+  raw JSON still underneath), Variables (project level rows) and Project
+  (validation and assets). The project path, Load and Save moved to a toolbar
+  above the regions so the file is always reachable, the way Remotion keeps the
+  composition picker visible.
+- **Variables are real.** They live in `metadata.variables` on the project and
+  are injected into every rendered frame as `window.__OMNIFRAME_VARIABLES__`.
+  A scene can read them without knowing about the editor.
+- **No new endpoints.** `projects/get`, `projects/save`, `preview/frame`,
+  `inspector/validate`, `compare/frames` and `compare/report` serve the new
+  workflow unchanged; only the frame globals gained one entry.
+
+The three grid regions (`preview-left`, `timeline-bottom`, `inspector-right`) and
+their names are unchanged, so the layout contract and its tests still hold.
+`tests/test_ui_studio.py` drives the panel in a real browser: the transport, the
+tab switch, a frame step, a props round trip and a variable that survives a save.
